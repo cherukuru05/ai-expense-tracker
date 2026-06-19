@@ -1,0 +1,1498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FinAI — AI Financial Expense Tracker</title>
+<script>
+  // Point this to your deployed backend if not running locally on port 5000
+  window.FINAI_API_BASE = window.FINAI_API_BASE || 'http://localhost:5000/api';
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0b0f1a; --bg2: #131929; --bg3: #1c2540; --bg4: #222d4a;
+    --surface: #1a2235; --surface2: #202d45;
+    --accent: #5b8def; --accent2: #7c3aed; --accent3: #06d6a0;
+    --accent4: #f59e0b; --accent5: #ef4444;
+    --text: #e8edf7; --text2: #9aadc7; --text3: #5c7090;
+    --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.12);
+    --radius: 12px; --radius-sm: 8px; --radius-lg: 16px;
+    --shadow: 0 4px 24px rgba(0,0,0,0.3);
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  [data-theme="light"] {
+    --bg: #f0f4ff; --bg2: #ffffff; --bg3: #e8eef8; --bg4: #dce6f5;
+    --surface: #ffffff; --surface2: #f5f8ff;
+    --text: #0f172a; --text2: #475569; --text3: #94a3b8;
+    --border: rgba(0,0,0,0.08); --border2: rgba(0,0,0,0.14);
+    --shadow: 0 4px 24px rgba(0,0,0,0.08);
+  }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; transition: background 0.3s, color 0.3s; }
+  a { text-decoration: none; color: inherit; }
+  button { cursor: pointer; font-family: var(--font); }
+  input, select, textarea { font-family: var(--font); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
+
+  /* Layout */
+  .app-layout { display: flex; min-height: 100vh; }
+  .sidebar {
+    width: 240px; min-height: 100vh; background: var(--bg2);
+    border-right: 1px solid var(--border); display: flex; flex-direction: column;
+    position: fixed; top: 0; left: 0; z-index: 100; transition: transform 0.3s;
+  }
+  .sidebar.collapsed { width: 60px; }
+  .sidebar-logo {
+    padding: 20px 18px 16px; display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 16px; flex-shrink: 0;
+  }
+  .logo-text { font-size: 18px; font-weight: 700; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; }
+  .nav-section { padding: 8px 12px 4px; font-size: 10px; font-weight: 600; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; padding: 9px 16px;
+    border-radius: var(--radius-sm); margin: 2px 8px; cursor: pointer;
+    color: var(--text2); font-size: 13.5px; font-weight: 500; transition: all 0.15s;
+    white-space: nowrap; border: none; background: none; width: calc(100% - 16px);
+  }
+  .nav-item:hover { background: var(--bg3); color: var(--text); }
+  .nav-item.active { background: rgba(91,141,239,0.15); color: var(--accent); }
+  .nav-item i { font-size: 18px; flex-shrink: 0; width: 20px; text-align: center; }
+  .nav-badge { margin-left: auto; background: var(--accent5); color: white; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 20px; }
+  .sidebar-footer { padding: 12px; border-top: 1px solid var(--border); }
+  .user-card { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s; }
+  .user-card:hover { background: var(--bg3); }
+  .avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent2)); display: flex; align-items: center; justify-content: center; color: white; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+  .user-name { font-size: 13px; font-weight: 600; color: var(--text); }
+  .user-email { font-size: 11px; color: var(--text3); }
+
+  .main-content { margin-left: 240px; flex: 1; display: flex; flex-direction: column; min-width: 0; transition: margin 0.3s; }
+
+  /* Topbar */
+  .topbar {
+    height: 60px; background: var(--bg2); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 24px; gap: 16px;
+    position: sticky; top: 0; z-index: 50;
+  }
+  .topbar-title { font-size: 17px; font-weight: 600; color: var(--text); flex: 1; }
+  .topbar-actions { display: flex; align-items: center; gap: 8px; }
+  .icon-btn {
+    width: 36px; height: 36px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+    background: transparent; color: var(--text2); display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 18px; transition: all 0.15s;
+  }
+  .icon-btn:hover { background: var(--bg3); color: var(--text); border-color: var(--border2); }
+  .search-bar {
+    display: flex; align-items: center; gap: 8px; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 0 12px; height: 36px; min-width: 200px;
+  }
+  .search-bar input { background: none; border: none; outline: none; color: var(--text); font-size: 13px; width: 100%; }
+  .search-bar input::placeholder { color: var(--text3); }
+  .notif-dot { position: relative; }
+  .notif-dot::after { content: ''; position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent5); border: 2px solid var(--bg2); }
+
+  /* Page content */
+  .page-content { padding: 24px; flex: 1; }
+
+  /* Cards */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+  .card-lg { border-radius: var(--radius-lg); }
+
+  /* Grid */
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+  .grid-3-2 { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; }
+
+  /* Stat cards */
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; position: relative; overflow: hidden; }
+  .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: var(--radius) var(--radius) 0 0; }
+  .stat-card.income::before { background: linear-gradient(90deg, var(--accent3), #04c87e); }
+  .stat-card.expense::before { background: linear-gradient(90deg, var(--accent5), #f97316); }
+  .stat-card.savings::before { background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+  .stat-card.budget::before { background: linear-gradient(90deg, var(--accent4), #e67e22); }
+  .stat-label { font-size: 12px; color: var(--text3); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .stat-value { font-size: 26px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+  .stat-change { font-size: 12px; display: flex; align-items: center; gap: 4px; }
+  .stat-change.up { color: var(--accent3); }
+  .stat-change.down { color: var(--accent5); }
+  .stat-icon { position: absolute; top: 16px; right: 16px; width: 38px; height: 38px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 20px; opacity: 0.9; }
+  .stat-icon.income { background: rgba(6,214,160,0.15); color: var(--accent3); }
+  .stat-icon.expense { background: rgba(239,68,68,0.15); color: var(--accent5); }
+  .stat-icon.savings { background: rgba(91,141,239,0.15); color: var(--accent); }
+  .stat-icon.budget { background: rgba(245,158,11,0.15); color: var(--accent4); }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px; padding: 8px 16px;
+    border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: all 0.15s; border: 1px solid transparent; white-space: nowrap;
+  }
+  .btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
+  .btn-primary:hover { background: #4a7de8; }
+  .btn-secondary { background: var(--bg3); color: var(--text); border-color: var(--border2); }
+  .btn-secondary:hover { background: var(--bg4); }
+  .btn-danger { background: rgba(239,68,68,0.1); color: var(--accent5); border-color: rgba(239,68,68,0.2); }
+  .btn-danger:hover { background: rgba(239,68,68,0.2); }
+  .btn-success { background: rgba(6,214,160,0.1); color: var(--accent3); border-color: rgba(6,214,160,0.2); }
+  .btn-success:hover { background: rgba(6,214,160,0.2); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn-icon { width: 32px; height: 32px; padding: 0; justify-content: center; }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; padding: 10px 14px; font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); }
+  td { padding: 11px 14px; font-size: 13.5px; color: var(--text); border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg3); }
+  .amount-pos { color: var(--accent3); font-weight: 600; }
+  .amount-neg { color: var(--accent5); font-weight: 600; }
+
+  /* Category badges */
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px;
+    border-radius: 20px; font-size: 11.5px; font-weight: 600;
+  }
+  .badge-food { background: rgba(245,158,11,0.15); color: var(--accent4); }
+  .badge-travel { background: rgba(91,141,239,0.15); color: var(--accent); }
+  .badge-shopping { background: rgba(124,58,237,0.15); color: #9f67f5; }
+  .badge-bills { background: rgba(239,68,68,0.15); color: var(--accent5); }
+  .badge-health { background: rgba(6,214,160,0.15); color: var(--accent3); }
+  .badge-entertainment { background: rgba(236,72,153,0.15); color: #ec4899; }
+  .badge-education { background: rgba(59,130,246,0.15); color: #60a5fa; }
+  .badge-other { background: rgba(100,116,139,0.15); color: #94a3b8; }
+  .badge-salary { background: rgba(6,214,160,0.15); color: var(--accent3); }
+
+  /* Progress bar */
+  .progress-bar { height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
+
+  /* Chart container */
+  .chart-wrap { position: relative; width: 100%; }
+
+  /* Modal overlay */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200;
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+    backdrop-filter: blur(4px);
+  }
+  .modal { background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius-lg); padding: 28px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+  .modal-title { font-size: 17px; font-weight: 700; color: var(--text); }
+
+  /* Form elements */
+  .form-group { margin-bottom: 18px; }
+  .form-label { display: block; font-size: 12.5px; font-weight: 600; color: var(--text2); margin-bottom: 7px; }
+  .form-input {
+    width: 100%; padding: 9px 13px; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text); font-size: 13.5px; outline: none; transition: border 0.15s;
+  }
+  .form-input:focus { border-color: var(--accent); }
+  .form-input::placeholder { color: var(--text3); }
+  select.form-input { cursor: pointer; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-error { font-size: 11.5px; color: var(--accent5); margin-top: 5px; }
+
+  /* Auth pages */
+  .auth-page {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: var(--bg); padding: 20px;
+  }
+  .auth-container { width: 100%; max-width: 420px; }
+  .auth-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 36px; }
+  .auth-logo { display: flex; align-items: center; gap: 10px; justify-content: center; margin-bottom: 28px; }
+  .auth-title { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 6px; }
+  .auth-subtitle { font-size: 14px; color: var(--text2); text-align: center; margin-bottom: 28px; }
+  .auth-link { color: var(--accent); cursor: pointer; font-weight: 600; }
+  .auth-divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
+  .auth-divider span { font-size: 12px; color: var(--text3); white-space: nowrap; }
+  .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .social-btn {
+    width: 100%; padding: 10px; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text); font-size: 13.5px; font-weight: 500;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 9px; transition: background 0.15s;
+  }
+  .social-btn:hover { background: var(--bg4); }
+
+  /* Landing page */
+  .landing { background: var(--bg); }
+  .landing-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 16px 32px; display: flex; align-items: center; background: rgba(11,15,26,0.85); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+  [data-theme="light"] .landing-nav { background: rgba(240,244,255,0.9); }
+  .landing-nav-logo { display: flex; align-items: center; gap: 10px; }
+  .landing-nav-links { display: flex; align-items: center; gap: 28px; margin-left: 48px; }
+  .landing-nav-links a { font-size: 14px; color: var(--text2); font-weight: 500; transition: color 0.15s; }
+  .landing-nav-links a:hover { color: var(--text); }
+  .landing-nav-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .hero { min-height: 100vh; display: flex; align-items: center; justify-content: center; text-align: center; padding: 100px 20px 60px; position: relative; overflow: hidden; }
+  .hero-bg { position: absolute; inset: 0; background: radial-gradient(ellipse 80% 60% at 50% 40%, rgba(91,141,239,0.12) 0%, transparent 60%), radial-gradient(ellipse 50% 40% at 80% 80%, rgba(124,58,237,0.08) 0%, transparent 50%); }
+  .hero-content { position: relative; z-index: 1; max-width: 760px; }
+  .hero-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(91,141,239,0.12); border: 1px solid rgba(91,141,239,0.25); border-radius: 20px; padding: 6px 14px; font-size: 12.5px; color: var(--accent); font-weight: 600; margin-bottom: 24px; }
+  .hero-title { font-size: clamp(36px, 6vw, 62px); font-weight: 800; line-height: 1.1; margin-bottom: 22px; }
+  .hero-title span { background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .hero-sub { font-size: 18px; color: var(--text2); line-height: 1.6; margin-bottom: 36px; max-width: 560px; margin-left: auto; margin-right: auto; }
+  .hero-actions { display: flex; align-items: center; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .btn-hero { padding: 13px 28px; font-size: 15px; border-radius: var(--radius); font-weight: 700; }
+  .hero-stats { display: flex; align-items: center; justify-content: center; gap: 40px; margin-top: 52px; }
+  .hero-stat { text-align: center; }
+  .hero-stat-value { font-size: 28px; font-weight: 800; color: var(--text); }
+  .hero-stat-label { font-size: 12px; color: var(--text3); margin-top: 4px; }
+  .features-section { padding: 80px 20px; max-width: 1100px; margin: 0 auto; }
+  .section-eyebrow { font-size: 12px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; text-align: center; margin-bottom: 12px; }
+  .section-title { font-size: clamp(26px, 4vw, 40px); font-weight: 800; text-align: center; margin-bottom: 14px; }
+  .section-sub { font-size: 16px; color: var(--text2); text-align: center; margin-bottom: 52px; max-width: 520px; margin-left: auto; margin-right: auto; }
+  .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .feature-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    padding: 28px; transition: border-color 0.2s, transform 0.2s;
+  }
+  .feature-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+  .feature-icon { width: 44px; height: 44px; border-radius: var(--radius); display: flex; align-items: center; justify-content: center; font-size: 22px; margin-bottom: 16px; }
+  .feature-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+  .feature-desc { font-size: 13.5px; color: var(--text2); line-height: 1.6; }
+  .pricing-section { padding: 80px 20px; max-width: 1000px; margin: 0 auto; }
+  .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 0; }
+  .pricing-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    padding: 28px; display: flex; flex-direction: column;
+  }
+  .pricing-card.featured { border-color: var(--accent); background: rgba(91,141,239,0.06); }
+  .pricing-badge { background: var(--accent); color: white; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; display: inline-block; margin-bottom: 14px; width: fit-content; }
+  .pricing-name { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+  .pricing-price { font-size: 36px; font-weight: 800; color: var(--text); }
+  .pricing-price sup { font-size: 16px; vertical-align: top; margin-top: 8px; display: inline-block; }
+  .pricing-price sub { font-size: 14px; color: var(--text2); font-weight: 400; }
+  .pricing-desc { font-size: 13px; color: var(--text2); margin: 12px 0 20px; }
+  .pricing-features { list-style: none; margin-bottom: 24px; flex: 1; }
+  .pricing-features li { display: flex; align-items: center; gap: 9px; font-size: 13.5px; color: var(--text2); padding: 6px 0; }
+  .pricing-features li i { color: var(--accent3); font-size: 16px; flex-shrink: 0; }
+  .pricing-features li.na { opacity: 0.4; }
+  .pricing-features li.na i { color: var(--text3); }
+  .reviews-section { padding: 80px 20px; max-width: 1000px; margin: 0 auto; }
+  .reviews-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .review-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; }
+  .review-stars { color: var(--accent4); font-size: 14px; margin-bottom: 12px; letter-spacing: 2px; }
+  .review-text { font-size: 13.5px; color: var(--text2); line-height: 1.65; margin-bottom: 16px; }
+  .reviewer { display: flex; align-items: center; gap: 10px; }
+  .reviewer-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: white; flex-shrink: 0; }
+  .reviewer-name { font-size: 13.5px; font-weight: 600; }
+  .reviewer-role { font-size: 11.5px; color: var(--text3); }
+  .cta-section { padding: 80px 20px; text-align: center; }
+  .cta-card { background: linear-gradient(135deg, rgba(91,141,239,0.15), rgba(124,58,237,0.15)); border: 1px solid rgba(91,141,239,0.2); border-radius: 24px; padding: 64px 40px; max-width: 700px; margin: 0 auto; }
+  .cta-title { font-size: 36px; font-weight: 800; margin-bottom: 16px; }
+  .cta-sub { font-size: 16px; color: var(--text2); margin-bottom: 32px; }
+  .footer { padding: 40px 32px; border-top: 1px solid var(--border); text-align: center; }
+  .footer-text { font-size: 13px; color: var(--text3); }
+
+  /* AI Insights */
+  .insight-card { background: linear-gradient(135deg, rgba(91,141,239,0.08), rgba(124,58,237,0.08)); border: 1px solid rgba(91,141,239,0.15); border-radius: var(--radius); padding: 18px; margin-bottom: 12px; }
+  .insight-title { font-size: 13.5px; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  .insight-title i { color: var(--accent); }
+  .insight-text { font-size: 13px; color: var(--text2); line-height: 1.6; }
+  .insight-tag { display: inline-block; background: rgba(91,141,239,0.12); color: var(--accent); font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; margin-top: 8px; }
+
+  /* Notification item */
+  .notif-item { display: flex; align-items: flex-start; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+  .notif-item:last-child { border-bottom: none; }
+  .notif-dot-small { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+  .notif-content { flex: 1; }
+  .notif-title { font-size: 13.5px; font-weight: 600; margin-bottom: 3px; }
+  .notif-desc { font-size: 12.5px; color: var(--text2); }
+  .notif-time { font-size: 11px; color: var(--text3); white-space: nowrap; }
+
+  /* Empty state */
+  .empty-state { text-align: center; padding: 40px; color: var(--text2); }
+  .empty-state i { font-size: 48px; color: var(--text3); margin-bottom: 12px; display: block; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; background: var(--bg3); border-radius: var(--radius-sm); padding: 4px; width: fit-content; margin-bottom: 20px; }
+  .tab { padding: 7px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--text2); border: none; background: none; transition: all 0.15s; }
+  .tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+
+  /* Loading spinner */
+  .spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Tooltip */
+  .tooltip { position: relative; }
+  .tooltip:hover::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); background: var(--bg2); border: 1px solid var(--border); color: var(--text2); font-size: 12px; padding: 5px 10px; border-radius: 6px; white-space: nowrap; z-index: 99; }
+
+  /* Responsive */
+  @media (max-width: 1024px) {
+    .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    .grid-3 { grid-template-columns: repeat(2, 1fr); }
+    .grid-2-1 { grid-template-columns: 1fr; }
+    .grid-3-2 { grid-template-columns: 1fr; }
+    .feature-grid { grid-template-columns: repeat(2, 1fr); }
+    .pricing-grid { grid-template-columns: 1fr; max-width: 400px; margin: 0 auto; }
+    .reviews-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); }
+    .sidebar.mobile-open { transform: translateX(0); }
+    .main-content { margin-left: 0; }
+    .grid-4 { grid-template-columns: 1fr 1fr; }
+    .feature-grid { grid-template-columns: 1fr; }
+    .reviews-grid { grid-template-columns: 1fr; }
+    .landing-nav-links { display: none; }
+    .hero-stats { gap: 24px; flex-wrap: wrap; }
+    .page-content { padding: 16px; }
+  }
+  @media (max-width: 480px) {
+    .grid-4 { grid-template-columns: 1fr; }
+    .grid-2 { grid-template-columns: 1fr; }
+    .form-row { grid-template-columns: 1fr; }
+  }
+  .chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; background: var(--bg3); border: 1px solid var(--border); color: var(--text2); cursor: pointer; transition: all 0.15s; }
+  .chip.active { background: rgba(91,141,239,0.15); border-color: rgba(91,141,239,0.3); color: var(--accent); }
+  .chip:hover { border-color: var(--border2); }
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+  .section-header-title { font-size: 15px; font-weight: 700; color: var(--text); }
+  .mt-4 { margin-top: 16px; } .mt-6 { margin-top: 24px; } .mt-8 { margin-top: 32px; }
+  .mb-4 { margin-bottom: 16px; } .mb-6 { margin-bottom: 24px; }
+  .gap-2 { gap: 8px; } .flex { display: flex; } .items-center { align-items: center; }
+  .flex-wrap { flex-wrap: wrap; }
+  .text-sm { font-size: 13px; } .text-xs { font-size: 11.5px; } .text-muted { color: var(--text2); }
+  .font-bold { font-weight: 700; } .font-semibold { font-weight: 600; }
+  .w-full { width: 100%; }
+  .budget-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .budget-label { font-size: 13px; color: var(--text); min-width: 100px; }
+  .budget-amount { font-size: 12px; color: var(--text3); white-space: nowrap; }
+  .ai-pulse { display: inline-flex; align-items: center; gap: 6px; }
+  .ai-pulse::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const { useState, useEffect, useRef, useCallback } = React;
+const h = React.createElement;
+
+// ============ API CLIENT (connects to Node.js/Express + MongoDB backend) ============
+const API_BASE = window.FINAI_API_BASE || 'http://localhost:5000/api';
+
+const api = {
+  token: localStorage.getItem('finai_token') || null,
+  setToken(t) { this.token = t; if (t) localStorage.setItem('finai_token', t); else localStorage.removeItem('finai_token'); },
+  async request(path, { method = 'GET', body } = {}) {
+    const res = await fetch(API_BASE + path, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(this.token ? { Authorization: 'Bearer ' + this.token } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || 'Request failed (' + res.status + ')');
+    return data;
+  },
+  // Auth
+  register: (name, email, password) => api.request('/auth/register', { method: 'POST', body: { name, email, password } }),
+  login: (email, password) => api.request('/auth/login', { method: 'POST', body: { email, password } }),
+  me: () => api.request('/auth/me'),
+  // Transactions
+  getTransactions: () => api.request('/transactions'),
+  createTransaction: (tx) => api.request('/transactions', { method: 'POST', body: tx }),
+  updateTransaction: (id, tx) => api.request('/transactions/' + id, { method: 'PUT', body: tx }),
+  deleteTransaction: (id) => api.request('/transactions/' + id, { method: 'DELETE' }),
+  getAnalyticsSummary: () => api.request('/transactions/analytics/summary'),
+  // Budgets
+  getBudgets: (month) => api.request('/budgets' + (month ? '?month=' + month : '')),
+  upsertBudget: (category, limit, month) => api.request('/budgets', { method: 'POST', body: { category, limit, month } }),
+  // Reminders / notifications
+  getReminders: () => api.request('/reminders'),
+  // AI
+  getBudgetSuggestions: () => api.request('/ai/budget-suggestions'),
+  askAI: (prompt) => api.request('/ai/insights', { method: 'POST', body: { prompt } }),
+};
+
+// ============ DATA (fallback/demo values used only before live data loads) ============
+const CATEGORIES = ['Food','Travel','Shopping','Bills','Health','Entertainment','Education','Other','Salary'];
+const CAT_COLORS = { Food:'#f59e0b',Travel:'#5b8def',Shopping:'#9f67f5',Bills:'#ef4444',Health:'#06d6a0',Entertainment:'#ec4899',Education:'#60a5fa',Other:'#94a3b8',Salary:'#06d6a0' };
+
+const TRANSACTIONS = [
+  {id:1,desc:'Netflix Subscription',category:'Entertainment',amount:-14.99,date:'2024-06-10',type:'expense',icon:'ti-device-tv'},
+  {id:2,desc:'Monthly Salary',category:'Salary',amount:5200,date:'2024-06-01',type:'income',icon:'ti-cash'},
+  {id:3,desc:'Grocery Store',category:'Food',amount:-87.43,date:'2024-06-09',type:'expense',icon:'ti-shopping-cart'},
+  {id:4,desc:'Electricity Bill',category:'Bills',amount:-124.50,date:'2024-06-08',type:'expense',icon:'ti-bolt'},
+  {id:5,desc:'Flight Tickets',category:'Travel',amount:-340.00,date:'2024-06-07',type:'expense',icon:'ti-plane'},
+  {id:6,desc:'Freelance Project',category:'Salary',amount:800,date:'2024-06-06',type:'income',icon:'ti-briefcase'},
+  {id:7,desc:'Amazon Shopping',category:'Shopping',amount:-62.18,date:'2024-06-05',type:'expense',icon:'ti-shopping-bag'},
+  {id:8,desc:'Gym Membership',category:'Health',amount:-45,date:'2024-06-04',type:'expense',icon:'ti-heart-rate-monitor'},
+  {id:9,desc:'Restaurant Dinner',category:'Food',amount:-48.25,date:'2024-06-03',type:'expense',icon:'ti-tools-kitchen-2'},
+  {id:10,desc:'Spotify Premium',category:'Entertainment',amount:-9.99,date:'2024-06-02',type:'expense',icon:'ti-music'},
+  {id:11,desc:'Online Course',category:'Education',amount:-199,date:'2024-06-01',type:'expense',icon:'ti-book'},
+  {id:12,desc:'Doctor Visit',category:'Health',amount:-80,date:'2024-05-30',type:'expense',icon:'ti-stethoscope'},
+];
+
+const BUDGETS = [
+  {category:'Food',limit:400,spent:135.68,color:'#f59e0b'},
+  {category:'Entertainment',limit:100,spent:24.98,color:'#ec4899'},
+  {category:'Travel',limit:500,spent:340,color:'#5b8def'},
+  {category:'Bills',limit:300,spent:124.50,color:'#ef4444'},
+  {category:'Shopping',limit:200,spent:62.18,color:'#9f67f5'},
+  {category:'Health',limit:150,spent:125,color:'#06d6a0'},
+];
+
+const MONTHLY_DATA = {
+  labels:['Jan','Feb','Mar','Apr','May','Jun'],
+  income:[4800,5200,4900,5100,5400,6000],
+  expense:[3200,3600,2900,3800,3400,3200]
+};
+
+const PIE_DATA = [
+  {label:'Food',value:23,color:'#f59e0b'},
+  {label:'Bills',value:20,color:'#ef4444'},
+  {label:'Travel',value:18,color:'#5b8def'},
+  {label:'Shopping',value:12,color:'#9f67f5'},
+  {label:'Health',value:10,color:'#06d6a0'},
+  {label:'Entertainment',value:8,color:'#ec4899'},
+  {label:'Other',value:9,color:'#94a3b8'},
+];
+
+const AI_INSIGHTS = [
+  {id:1,title:'Overspending Alert',text:'Your food spending is 34% higher than last month. Consider meal prepping to save ~₹45/month.',tag:'Budget Warning',icon:'ti-alert-triangle'},
+  {id:2,title:'Savings Opportunity',text:"You've consistently saved 18% of income. Increasing to 20% would add ₹2,600 to savings this year.",tag:'Goal Tip',icon:'ti-bulb'},
+  {id:3,title:'Bill Optimization',text:'Your subscription services total ₹89/month. Canceling unused ones could free up ₹240/year.',tag:'Smart Saving',icon:'ti-scissors'},
+  {id:4,title:'Investment Nudge',text:'You have ₹1,200 idle in checking. Moving 60% to high-yield savings earns ~₹43/year extra.',tag:'Investment',icon:'ti-trending-up'},
+];
+
+const NOTIFICATIONS = [
+  {id:1,title:'Electricity Bill Due',desc:'₹124.50 due in 3 days — pay before Jun 12',color:'#ef4444',time:'Now',unread:true},
+  {id:2,title:'Budget Alert: Health',desc:'83% of your health budget used this month',color:'#f59e0b',time:'2h ago',unread:true},
+  {id:3,title:'AI Insight Ready',desc:'New spending pattern analysis available',color:'#5b8def',time:'5h ago',unread:false},
+  {id:4,title:'Salary Received',desc:'₹5,200 deposited to your account',color:'#06d6a0',time:'1d ago',unread:false},
+];
+
+// ============ COMPONENTS ============
+
+function ThemeToggle({ theme, setTheme }) {
+  return h('button', {
+    className: 'icon-btn', onClick: () => setTheme(theme === 'dark' ? 'light' : 'dark'),
+    title: 'Toggle theme'
+  }, h('i', { className: theme === 'dark' ? 'ti ti-sun' : 'ti ti-moon' }));
+}
+
+function Sidebar({ page, setPage, theme, setTheme, collapsed }) {
+  const nav = [
+    { section: 'Main' },
+    { id: 'dashboard', label: 'Dashboard', icon: 'ti-dashboard' },
+    { id: 'expenses', label: 'Expenses', icon: 'ti-receipt' },
+    { id: 'analytics', label: 'Analytics', icon: 'ti-chart-bar' },
+    { section: 'Finance' },
+    { id: 'budget', label: 'Budget', icon: 'ti-wallet' },
+    { id: 'ai', label: 'AI Insights', icon: 'ti-brain' },
+    { id: 'reports', label: 'Reports', icon: 'ti-file-analytics' },
+    { section: 'Settings' },
+    { id: 'notifications', label: 'Alerts', icon: 'ti-bell', badge: 2 },
+    { id: 'settings', label: 'Settings', icon: 'ti-settings' },
+  ];
+  return h('aside', { className: 'sidebar' + (collapsed ? ' collapsed' : '') },
+    h('div', { className: 'sidebar-logo' },
+      h('div', { className: 'logo-icon' }, h('i', { className: 'ti ti-chart-pie' })),
+      !collapsed && h('span', { className: 'logo-text' }, 'FinAI')
+    ),
+    h('nav', { className: 'sidebar-nav' },
+      nav.map((item, i) => {
+        if (item.section) return h('div', { key: i, className: 'nav-section' }, !collapsed && item.section);
+        return h('button', {
+          key: item.id, className: 'nav-item' + (page === item.id ? ' active' : ''),
+          onClick: () => setPage(item.id)
+        },
+          h('i', { className: 'ti ' + item.icon }),
+          !collapsed && h('span', null, item.label),
+          !collapsed && item.badge && h('span', { className: 'nav-badge' }, item.badge)
+        );
+      })
+    ),
+    h('div', { className: 'sidebar-footer' },
+      !collapsed && h('div', { className: 'user-card', onClick: () => window.finaiLogout && window.finaiLogout(), title: 'Click to log out' },
+        h('div', { className: 'avatar' }, 'KP'),
+        h('div', null,
+          h('div', { className: 'user-name' }, 'Komal P.'),
+          h('div', { className: 'user-email' }, 'komal@email.com')
+        ),
+        h(ThemeToggle, { theme, setTheme })
+      )
+    )
+  );
+}
+
+function Topbar({ title, theme, setTheme, setPage }) {
+  return h('header', { className: 'topbar' },
+    h('span', { className: 'topbar-title' }, title),
+    h('div', { className: 'topbar-actions' },
+      h('div', { className: 'search-bar' },
+        h('i', { className: 'ti ti-search', style: { color: 'var(--text3)', fontSize: 15 } }),
+        h('input', { type: 'text', placeholder: 'Search transactions…' })
+      ),
+      h('button', { className: 'icon-btn notif-dot', onClick: () => setPage('notifications') },
+        h('i', { className: 'ti ti-bell' })
+      ),
+      h(ThemeToggle, { theme, setTheme })
+    )
+  );
+}
+
+// ============ CHARTS ============
+function BarChart({ id, labels, income, expense }) {
+  const ref = useRef(null);
+  const chartRef = useRef(null);
+  useEffect(() => {
+    if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; }
+    if (!ref.current) return;
+    chartRef.current = new Chart(ref.current, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Income', data: income, backgroundColor: 'rgba(6,214,160,0.7)', borderRadius: 6, borderSkipped: false },
+          { label: 'Expense', data: expense, backgroundColor: 'rgba(91,141,239,0.7)', borderRadius: 6, borderSkipped: false }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#9aadc7', font: { size: 12 } } },
+          y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#9aadc7', font: { size: 12 }, callback: v => '₹' + (v/1000).toFixed(0) + 'k' } }
+        }
+      }
+    });
+    return () => { if (chartRef.current) chartRef.current.destroy(); };
+  }, []);
+  return h('div', { className: 'chart-wrap', style: { height: 220 } },
+    h('canvas', { id, ref, role: 'img', 'aria-label': 'Bar chart of monthly income vs expense' })
+  );
+}
+
+function PieChart({ id, data }) {
+  const ref = useRef(null);
+  const chartRef = useRef(null);
+  useEffect(() => {
+    if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; }
+    if (!ref.current) return;
+    chartRef.current = new Chart(ref.current, {
+      type: 'doughnut',
+      data: {
+        labels: data.map(d => d.label),
+        datasets: [{ data: data.map(d => d.value), backgroundColor: data.map(d => d.color), borderWidth: 0, hoverOffset: 6 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '70%',
+        plugins: { legend: { display: false } }
+      }
+    });
+    return () => { if (chartRef.current) chartRef.current.destroy(); };
+  }, []);
+  return h('div', { className: 'chart-wrap', style: { height: 200 } },
+    h('canvas', { id, ref, role: 'img', 'aria-label': 'Doughnut chart of category-wise expenses' })
+  );
+}
+
+function LineChart({ id, labels, data }) {
+  const ref = useRef(null);
+  const chartRef = useRef(null);
+  useEffect(() => {
+    if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; }
+    if (!ref.current) return;
+    chartRef.current = new Chart(ref.current, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Savings', data,
+          borderColor: '#5b8def', backgroundColor: 'rgba(91,141,239,0.08)',
+          fill: true, tension: 0.4, pointBackgroundColor: '#5b8def', pointRadius: 4
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#9aadc7', font: { size: 12 } } },
+          y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#9aadc7', font: { size: 12 }, callback: v => '₹' + v } }
+        }
+      }
+    });
+    return () => { if (chartRef.current) chartRef.current.destroy(); };
+  }, []);
+  return h('div', { className: 'chart-wrap', style: { height: 200 } },
+    h('canvas', { id, ref, role: 'img', 'aria-label': 'Line chart of monthly savings trend' })
+  );
+}
+
+// ============ PAGES ============
+
+function Dashboard({ setPage, transactions, loading }) {
+  const txs = (transactions && transactions.length) ? transactions : TRANSACTIONS;
+  const totalIncome = txs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+  const totalExpense = Math.abs(txs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0));
+  const savings = totalIncome - totalExpense;
+  const budgetUsed = Math.round((totalExpense / 4000) * 100);
+
+  return h('div', { className: 'page-content' },
+    h('div', { className: 'mb-6' },
+      h('h2', { style: { fontSize: 22, fontWeight: 800, marginBottom: 4 } }, 'Good morning, Komal 👋'),
+      h('p', { style: { color: 'var(--text2)', fontSize: 14 } }, "Here's your financial overview for June 2024")
+    ),
+
+    // Stats
+    h('div', { className: 'grid-4 mb-6' },
+      h('div', { className: 'stat-card income' },
+        h('div', { className: 'stat-icon income' }, h('i', { className: 'ti ti-trending-up' })),
+        h('div', { className: 'stat-label' }, 'Total Income'),
+        h('div', { className: 'stat-value' }, '₹' + totalIncome.toLocaleString()),
+        h('div', { className: 'stat-change up' }, h('i', { className: 'ti ti-arrow-up-right', style:{fontSize:12} }), '+12.4% vs last month')
+      ),
+      h('div', { className: 'stat-card expense' },
+        h('div', { className: 'stat-icon expense' }, h('i', { className: 'ti ti-trending-down' })),
+        h('div', { className: 'stat-label' }, 'Total Expenses'),
+        h('div', { className: 'stat-value' }, '₹' + totalExpense.toFixed(2)),
+        h('div', { className: 'stat-change down' }, h('i', { className: 'ti ti-arrow-up-right', style:{fontSize:12} }), '+3.1% vs last month')
+      ),
+      h('div', { className: 'stat-card savings' },
+        h('div', { className: 'stat-icon savings' }, h('i', { className: 'ti ti-piggy-bank' })),
+        h('div', { className: 'stat-label' }, 'Net Savings'),
+        h('div', { className: 'stat-value' }, '₹' + savings.toFixed(2)),
+        h('div', { className: 'stat-change up' }, h('i', { className: 'ti ti-arrow-up-right', style:{fontSize:12} }), '+18% savings rate')
+      ),
+      h('div', { className: 'stat-card budget' },
+        h('div', { className: 'stat-icon budget' }, h('i', { className: 'ti ti-wallet' })),
+        h('div', { className: 'stat-label' }, 'Budget Used'),
+        h('div', { className: 'stat-value' }, budgetUsed + '%'),
+        h('div', { className: 'stat-change up' }, h('i', { className: 'ti ti-check', style:{fontSize:12} }), '₹' + (4000 - totalExpense).toFixed(0) + ' remaining')
+      )
+    ),
+
+    // Charts row
+    h('div', { className: 'grid-2-1 mb-6' },
+      h('div', { className: 'card card-lg' },
+        h('div', { className: 'section-header' },
+          h('span', { className: 'section-header-title' }, 'Monthly Income vs Expenses'),
+          h('div', { className: 'flex gap-2' },
+            h('span', { style:{ display:'flex', alignItems:'center', gap:5, fontSize:12, color:'var(--text2)' } }, h('span', { style:{width:10,height:10,borderRadius:2,background:'rgba(6,214,160,0.7)',display:'inline-block'} }), 'Income'),
+            h('span', { style:{ display:'flex', alignItems:'center', gap:5, fontSize:12, color:'var(--text2)' } }, h('span', { style:{width:10,height:10,borderRadius:2,background:'rgba(91,141,239,0.7)',display:'inline-block'} }), 'Expense')
+          )
+        ),
+        h(BarChart, { id: 'dashBar', labels: MONTHLY_DATA.labels, income: MONTHLY_DATA.income, expense: MONTHLY_DATA.expense })
+      ),
+      h('div', { className: 'card card-lg' },
+        h('div', { className: 'section-header' }, h('span', { className: 'section-header-title' }, 'By Category')),
+        h(PieChart, { id: 'dashPie', data: PIE_DATA }),
+        h('div', { style:{ marginTop:12, display:'flex', flexWrap:'wrap', gap:'6px 16px' } },
+          PIE_DATA.slice(0,5).map(d => h('span', { key: d.label, style:{ display:'flex', alignItems:'center', gap:5, fontSize:11.5, color:'var(--text2)' } },
+            h('span', { style:{width:8,height:8,borderRadius:50,background:d.color,display:'inline-block'} }),
+            d.label + ' ' + d.value + '%'
+          ))
+        )
+      )
+    ),
+
+    // Recent transactions + AI
+    h('div', { className: 'grid-3-2' },
+      h('div', { className: 'card card-lg' },
+        h('div', { className: 'section-header' },
+          h('span', { className: 'section-header-title' }, 'Recent Transactions'),
+          h('button', { className: 'btn btn-secondary btn-sm', onClick: () => setPage('expenses') }, 'View all')
+        ),
+        h('div', { className: 'table-wrap' },
+          h('table', null,
+            h('thead', null, h('tr', null,
+              h('th', null, 'Description'), h('th', null, 'Category'), h('th', null, 'Date'), h('th', null, 'Amount')
+            )),
+            h('tbody', null, txs.slice(0,6).map(t =>
+              h('tr', { key: t.id },
+                h('td', null, h('span', { style:{display:'flex',alignItems:'center',gap:9} },
+                  h('span', { style:{width:30,height:30,borderRadius:8,background:'var(--bg3)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0} }, h('i', { className:'ti '+t.icon, style:{fontSize:14,color:'var(--text2)'} })),
+                  t.desc
+                )),
+                h('td', null, h('span', { className:'badge badge-'+t.category.toLowerCase() }, t.category)),
+                h('td', { style:{color:'var(--text3)',fontSize:12} }, t.date),
+                h('td', null, h('span', { className: t.type==='income' ? 'amount-pos' : 'amount-neg' }, (t.type==='income'?'+':'')+t.amount.toLocaleString('en-US',{style:'currency',currency:'INR'})))
+              )
+            ))
+          )
+        )
+      ),
+      h('div', { className: 'card card-lg' },
+        h('div', { className: 'section-header' },
+          h('span', { className: 'section-header-title' }, h('span', { className:'ai-pulse' }, ' AI Insights')),
+          h('button', { className:'btn btn-secondary btn-sm', onClick:()=>setPage('ai') }, 'All insights')
+        ),
+        AI_INSIGHTS.slice(0,3).map(ins => h('div', { key:ins.id, className:'insight-card' },
+          h('div', { className:'insight-title' }, h('i', { className:'ti '+ins.icon }), ins.title),
+          h('div', { className:'insight-text' }, ins.text),
+          h('div', { className:'insight-tag' }, ins.tag)
+        ))
+      )
+    )
+  );
+}
+
+function Expenses({ transactions, setTransactions }) {
+  const [filter, setFilter] = useState('All');
+  const [search, setSearch] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState({ desc:'', amount:'', category:'Food', date:'', type:'expense' });
+  const [errors, setErrors] = useState({});
+
+  const cats = ['All', ...CATEGORIES];
+  const filtered = transactions.filter(t =>
+    (filter === 'All' || t.category === filter) &&
+    (!search || t.desc.toLowerCase().includes(search.toLowerCase()))
+  );
+
+  function openAdd() { setForm({ desc:'', amount:'', category:'Food', date: new Date().toISOString().slice(0,10), type:'expense' }); setEditing(null); setErrors({}); setShowModal(true); }
+  function openEdit(t) { setForm({ desc:t.desc, amount:Math.abs(t.amount), category:t.category, date:t.date, type:t.type }); setEditing(t.id || t._id); setErrors({}); setShowModal(true); }
+  function validate() {
+    const e = {};
+    if (!form.desc.trim()) e.desc = 'Description required';
+    if (!form.amount || isNaN(form.amount) || Number(form.amount) <= 0) e.amount = 'Enter a valid amount';
+    if (!form.date) e.date = 'Date required';
+    setErrors(e); return Object.keys(e).length === 0;
+  }
+  async function handleSave() {
+    if (!validate()) return;
+    const payload = { desc: form.desc, amount: Number(form.amount), category: form.category, date: form.date, type: form.type };
+    try {
+      if (editing) {
+        const res = await api.updateTransaction(editing, payload);
+        setTransactions(ts => ts.map(t => (t.id || t._id) === editing ? { ...res.transaction, id: res.transaction._id } : t));
+      } else {
+        const res = await api.createTransaction(payload);
+        setTransactions(ts => [{ ...res.transaction, id: res.transaction._id }, ...ts]);
+      }
+      setShowModal(false);
+    } catch (err) {
+      setErrors({ desc: err.message || 'Could not save transaction (check backend connection)' });
+    }
+  }
+  async function handleDelete(id) {
+    try {
+      await api.deleteTransaction(id);
+      setTransactions(ts => ts.filter(t => (t.id || t._id) !== id));
+    } catch (err) {
+      alert(err.message || 'Could not delete transaction');
+    }
+  }
+
+  return h('div', { className: 'page-content' },
+    h('div', { className: 'section-header mb-6' },
+      h('div', null,
+        h('h2', { style:{fontSize:20,fontWeight:800,marginBottom:4} }, 'Expense Manager'),
+        h('p', { style:{color:'var(--text2)',fontSize:13} }, filtered.length + ' transactions')
+      ),
+      h('button', { className:'btn btn-primary', onClick:openAdd }, h('i', { className:'ti ti-plus' }), 'Add Transaction')
+    ),
+    h('div', { className:'card mb-4', style:{padding:'14px 16px'} },
+      h('div', { style:{display:'flex',gap:12,alignItems:'center',flexWrap:'wrap'} },
+        h('div', { style:{flex:1,minWidth:180,display:'flex',alignItems:'center',gap:8,background:'var(--bg3)',border:'1px solid var(--border)',borderRadius:'var(--radius-sm)',padding:'0 12px',height:36} },
+          h('i', { className:'ti ti-search', style:{color:'var(--text3)',fontSize:15} }),
+          h('input', { style:{background:'none',border:'none',outline:'none',color:'var(--text)',fontSize:13,width:'100%'}, placeholder:'Search...', value:search, onChange:e=>setSearch(e.target.value) })
+        ),
+        h('div', { style:{display:'flex',gap:6,flexWrap:'wrap'} },
+          cats.map(c => h('button', { key:c, className:'chip'+(filter===c?' active':''), onClick:()=>setFilter(c) }, c))
+        )
+      )
+    ),
+    h('div', { className:'card' },
+      h('div', { className:'table-wrap' },
+        h('table', null,
+          h('thead', null, h('tr', null, h('th',null,'Description'),h('th',null,'Category'),h('th',null,'Type'),h('th',null,'Date'),h('th',null,'Amount'),h('th',null,'Actions'))),
+          h('tbody', null, filtered.length === 0
+            ? h('tr', null, h('td', { colSpan:6 }, h('div',{className:'empty-state'}, h('i',{className:'ti ti-receipt-off'}), 'No transactions found')))
+            : filtered.map(t => h('tr', { key:t.id },
+              h('td', null, h('span',{style:{display:'flex',alignItems:'center',gap:9}},
+                h('span',{style:{width:30,height:30,borderRadius:8,background:'var(--bg3)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}, h('i',{className:'ti '+t.icon,style:{fontSize:14,color:'var(--text2)'}})),
+                t.desc
+              )),
+              h('td', null, h('span',{className:'badge badge-'+t.category.toLowerCase()}, t.category)),
+              h('td', null, h('span',{style:{fontSize:12,color:t.type==='income'?'var(--accent3)':'var(--text3)',fontWeight:500,textTransform:'capitalize'}}, t.type)),
+              h('td', {style:{color:'var(--text3)',fontSize:12}}, t.date),
+              h('td', null, h('span',{className:t.type==='income'?'amount-pos':'amount-neg'}, (t.type==='income'?'+':'')+t.amount.toLocaleString('en-US',{style:'currency',currency:'INR'}))),
+              h('td', null, h('div',{style:{display:'flex',gap:6}},
+                h('button',{className:'btn btn-secondary btn-sm btn-icon',onClick:()=>openEdit(t)}, h('i',{className:'ti ti-edit',style:{fontSize:14}})),
+                h('button',{className:'btn btn-danger btn-sm btn-icon',onClick:()=>handleDelete(t.id)}, h('i',{className:'ti ti-trash',style:{fontSize:14}}))
+              ))
+            ))
+          )
+        )
+      )
+    ),
+    showModal && h('div', { className:'modal-overlay', onClick:e=>e.target===e.currentTarget&&setShowModal(false) },
+      h('div', { className:'modal' },
+        h('div', { className:'modal-header' },
+          h('span', { className:'modal-title' }, editing ? 'Edit Transaction' : 'Add Transaction'),
+          h('button', { className:'icon-btn', onClick:()=>setShowModal(false) }, h('i',{className:'ti ti-x'}))
+        ),
+        h('div', { className:'form-group' },
+          h('label', { className:'form-label' }, 'Description'),
+          h('input', { className:'form-input', placeholder:'e.g. Netflix Subscription', value:form.desc, onChange:e=>setForm({...form,desc:e.target.value}) }),
+          errors.desc && h('div',{className:'form-error'}, errors.desc)
+        ),
+        h('div', { className:'form-row' },
+          h('div', { className:'form-group' },
+            h('label', { className:'form-label' }, 'Amount (₹)'),
+            h('input', { className:'form-input', type:'number', min:'0', placeholder:'0.00', value:form.amount, onChange:e=>setForm({...form,amount:e.target.value}) }),
+            errors.amount && h('div',{className:'form-error'}, errors.amount)
+          ),
+          h('div', { className:'form-group' },
+            h('label', { className:'form-label' }, 'Type'),
+            h('select', { className:'form-input', value:form.type, onChange:e=>setForm({...form,type:e.target.value}) },
+              h('option',{value:'expense'},'Expense'), h('option',{value:'income'},'Income')
+            )
+          )
+        ),
+        h('div', { className:'form-row' },
+          h('div', { className:'form-group' },
+            h('label', { className:'form-label' }, 'Category'),
+            h('select', { className:'form-input', value:form.category, onChange:e=>setForm({...form,category:e.target.value}) },
+              CATEGORIES.map(c => h('option',{key:c,value:c},c))
+            )
+          ),
+          h('div', { className:'form-group' },
+            h('label', { className:'form-label' }, 'Date'),
+            h('input', { className:'form-input', type:'date', value:form.date, onChange:e=>setForm({...form,date:e.target.value}) }),
+            errors.date && h('div',{className:'form-error'}, errors.date)
+          )
+        ),
+        h('div', { style:{display:'flex',gap:10,justifyContent:'flex-end',marginTop:4} },
+          h('button',{className:'btn btn-secondary',onClick:()=>setShowModal(false)}, 'Cancel'),
+          h('button',{className:'btn btn-primary',onClick:handleSave}, editing ? 'Save Changes' : 'Add Transaction')
+        )
+      )
+    )
+  );
+}
+
+function Budget() {
+  const [budgets, setBudgets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState({ category: 'Food', limit: '' });
+
+  async function load() {
+    setLoading(true);
+    try {
+      const res = await api.getBudgets();
+      setBudgets(res.budgets.map(b => ({ ...b, color: CAT_COLORS[b.category] || '#5b8def' })));
+    } catch (err) { /* backend not reachable yet */ }
+    setLoading(false);
+  }
+  useEffect(() => { load(); }, []);
+
+  async function saveBudget() {
+    if (!form.limit || isNaN(form.limit)) return;
+    try {
+      await api.upsertBudget(form.category, Number(form.limit));
+      setShowModal(false);
+      load();
+    } catch (err) { alert(err.message || 'Could not save budget'); }
+  }
+
+  const totalBudget = budgets.reduce((s,b)=>s+b.limit,0);
+  const totalSpent = budgets.reduce((s,b)=>s+b.spent,0);
+
+  return h('div', { className:'page-content' },
+    h('div', { className:'section-header mb-6' },
+      h('div', null, h('h2',{style:{fontSize:20,fontWeight:800,marginBottom:4}},'Budget Overview'), h('p',{style:{color:'var(--text2)',fontSize:13}}, new Date().toLocaleString('default',{month:'long',year:'numeric'}))),
+      h('button',{className:'btn btn-primary', onClick:()=>setShowModal(true)}, h('i',{className:'ti ti-plus'}), 'Set Budget')
+    ),
+    h('div', { className:'grid-3 mb-6' },
+      h('div', { className:'stat-card income', style:{gridColumn:'span 1'} },
+        h('div',{className:'stat-label'},'Total Budget'),
+        h('div',{className:'stat-value'},'₹'+totalBudget.toLocaleString()),
+        h('div',{className:'stat-change up'}, 'Monthly limit')
+      ),
+      h('div', { className:'stat-card expense' },
+        h('div',{className:'stat-label'},'Spent So Far'),
+        h('div',{className:'stat-value'},'₹'+totalSpent.toFixed(2)),
+        h('div',{className:'stat-change down'}, totalBudget ? (Math.round(totalSpent/totalBudget*100)+'% of budget') : '—')
+      ),
+      h('div', { className:'stat-card savings' },
+        h('div',{className:'stat-label'},'Remaining'),
+        h('div',{className:'stat-value'},'₹'+(totalBudget-totalSpent).toFixed(2)),
+        h('div',{className:'stat-change up'}, totalBudget ? (Math.round((totalBudget-totalSpent)/totalBudget*100)+'% available') : '—')
+      )
+    ),
+    h('div', { className:'card' },
+      h('div',{className:'section-header'}, h('span',{className:'section-header-title'},'Category Budgets')),
+      loading ? h('div',{className:'empty-state'}, h('div',{className:'spinner'})) :
+      budgets.length === 0 ? h('div',{className:'empty-state'}, h('i',{className:'ti ti-wallet-off'}), 'No budgets set yet — click "Set Budget" to add one') :
+      budgets.map(b => {
+        const pct = b.limit ? Math.round((b.spent / b.limit) * 100) : 0;
+        return h('div', { key:b.category, className:'budget-row', style:{flexDirection:'column',alignItems:'stretch',gap:8,padding:'12px 0',borderBottom:'1px solid var(--border)'} },
+          h('div', {style:{display:'flex',alignItems:'center',justifyContent:'space-between'}},
+            h('span', {style:{display:'flex',alignItems:'center',gap:8,fontSize:14,fontWeight:600}},
+              h('span',{style:{width:10,height:10,borderRadius:50,background:b.color,display:'inline-block'}}), b.category
+            ),
+            h('div', {style:{display:'flex',gap:12,alignItems:'center'}},
+              h('span',{className:'budget-amount'},'₹'+b.spent.toFixed(2)+' / ₹'+b.limit),
+              h('span',{style:{fontSize:12,fontWeight:700,color: pct>80?'var(--accent5)':pct>60?'var(--accent4)':'var(--accent3)'}}, pct+'%')
+            )
+          ),
+          h('div',{className:'progress-bar'},
+            h('div',{className:'progress-fill',style:{width:Math.min(pct,100)+'%',background:pct>80?'var(--accent5)':pct>60?'var(--accent4)':b.color}})
+          )
+        );
+      })
+    ),
+    showModal && h('div', { className:'modal-overlay', onClick:e=>e.target===e.currentTarget&&setShowModal(false) },
+      h('div', { className:'modal' },
+        h('div', { className:'modal-header' },
+          h('span', { className:'modal-title' }, 'Set Budget'),
+          h('button', { className:'icon-btn', onClick:()=>setShowModal(false) }, h('i',{className:'ti ti-x'}))
+        ),
+        h('div', { className:'form-group' },
+          h('label', { className:'form-label' }, 'Category'),
+          h('select', { className:'form-input', value:form.category, onChange:e=>setForm({...form,category:e.target.value}) },
+            CATEGORIES.filter(c=>c!=='Salary').map(c => h('option',{key:c,value:c},c))
+          )
+        ),
+        h('div', { className:'form-group' },
+          h('label', { className:'form-label' }, 'Monthly Limit (₹)'),
+          h('input', { className:'form-input', type:'number', min:'0', value:form.limit, onChange:e=>setForm({...form,limit:e.target.value}) })
+        ),
+        h('div', { style:{display:'flex',gap:10,justifyContent:'flex-end',marginTop:4} },
+          h('button',{className:'btn btn-secondary',onClick:()=>setShowModal(false)}, 'Cancel'),
+          h('button',{className:'btn btn-primary',onClick:saveBudget}, 'Save Budget')
+        )
+      )
+    )
+  );
+}
+
+function Analytics() {
+  const savings = MONTHLY_DATA.income.map((inc,i) => inc - MONTHLY_DATA.expense[i]);
+  return h('div', { className:'page-content' },
+    h('h2', {style:{fontSize:20,fontWeight:800,marginBottom:4}},'Reports & Analytics'),
+    h('p', {style:{color:'var(--text2)',fontSize:13,marginBottom:24}},'Financial insights for June 2024'),
+    h('div', { className:'grid-2 mb-6' },
+      h('div', {className:'card card-lg'},
+        h('div',{className:'section-header'}, h('span',{className:'section-header-title'},'Savings Trend'), h('span',{style:{fontSize:12,color:'var(--accent3)'}},'+11% YoY')),
+        h(LineChart,{id:'savingsLine', labels:MONTHLY_DATA.labels, data:savings})
+      ),
+      h('div', {className:'card card-lg'},
+        h('div',{className:'section-header'}, h('span',{className:'section-header-title'},'Expense Breakdown')),
+        h(PieChart,{id:'analyticsPie',data:PIE_DATA}),
+        h('div',{style:{marginTop:14,display:'grid',gridTemplateColumns:'1fr 1fr',gap:'6px 16px'}},
+          PIE_DATA.map(d=>h('div',{key:d.label,style:{display:'flex',alignItems:'center',gap:7,fontSize:12.5,color:'var(--text2)'}},
+            h('span',{style:{width:8,height:8,borderRadius:2,background:d.color,display:'inline-block',flexShrink:0}}),
+            h('span',{style:{flex:1}}),d.label, h('span',{style:{fontWeight:600,color:'var(--text)'}},' '+d.value+'%')
+          ))
+        )
+      )
+    ),
+    h('div', {className:'card mb-6'},
+      h('div',{className:'section-header'},
+        h('span',{className:'section-header-title'},'Monthly Comparison'),
+        h('button',{className:'btn btn-primary btn-sm'}, h('i',{className:'ti ti-download'}), 'Export PDF')
+      ),
+      h(BarChart,{id:'analyticsBar',labels:MONTHLY_DATA.labels,income:MONTHLY_DATA.income,expense:MONTHLY_DATA.expense}),
+      h('div',{style:{display:'flex',gap:20,marginTop:14,flexWrap:'wrap'}},
+        h('span',{style:{display:'flex',alignItems:'center',gap:6,fontSize:13,color:'var(--text2)'}}, h('span',{style:{width:10,height:10,borderRadius:2,background:'rgba(6,214,160,0.7)',display:'inline-block'}}), 'Income'),
+        h('span',{style:{display:'flex',alignItems:'center',gap:6,fontSize:13,color:'var(--text2)'}}, h('span',{style:{width:10,height:10,borderRadius:2,background:'rgba(91,141,239,0.7)',display:'inline-block'}}), 'Expenses')
+      )
+    ),
+    h('div',{className:'card'},
+      h('div',{className:'section-header'}, h('span',{className:'section-header-title'},'Summary Statistics')),
+      h('div',{className:'grid-4'},
+        [{label:'Avg Monthly Income',value:'₹5,233',icon:'ti-trending-up',color:'var(--accent3)'},
+         {label:'Avg Monthly Expense',value:'₹3,350',icon:'ti-trending-down',color:'var(--accent5)'},
+         {label:'Best Savings Month',value:'March',icon:'ti-star',color:'var(--accent4)'},
+         {label:'Avg Savings Rate',value:'35.9%',icon:'ti-piggy-bank',color:'var(--accent)'}
+        ].map(s => h('div',{key:s.label,style:{textAlign:'center',padding:'16px 0'}},
+          h('i',{className:'ti '+s.icon,style:{fontSize:28,color:s.color,marginBottom:8,display:'block'}}),
+          h('div',{style:{fontSize:20,fontWeight:800,marginBottom:4}}), 
+          h('div',{style:{fontSize:18,fontWeight:700,color:'var(--text)',marginBottom:4}},s.value),
+          h('div',{style:{fontSize:12,color:'var(--text3)'}},s.label)
+        ))
+      )
+    )
+  );
+}
+
+function AIInsights() {
+  const [loading, setLoading] = useState(false);
+  const [aiResponse, setAiResponse] = useState('');
+  const [prompt, setPrompt] = useState('');
+  const [mlSuggestions, setMlSuggestions] = useState([]);
+
+  useEffect(() => {
+    api.getBudgetSuggestions().then(res => setMlSuggestions(res.suggestions || [])).catch(() => {});
+  }, []);
+
+  async function askAI() {
+    if (!prompt.trim()) return;
+    setLoading(true); setAiResponse('');
+    try {
+      const res = await api.askAI(prompt);
+      setAiResponse(res.insight || 'No response received.');
+    } catch(e) { setAiResponse(e.message || 'Error connecting to AI backend. Please check the server is running.'); }
+    setLoading(false);
+  }
+
+  const dynamicInsights = mlSuggestions.filter(s => s.alert).map((s, i) => ({
+    id: 'ml-' + i,
+    title: s.category + ' Trend',
+    text: s.alert + ` (avg ₹${s.avgMonthlySpend}/mo, suggested limit ₹${s.suggestedLimit})`,
+    tag: 'ML Model',
+    icon: 'ti-chart-line',
+  }));
+  const insightsToShow = dynamicInsights.length ? dynamicInsights : AI_INSIGHTS;
+
+  return h('div', { className:'page-content' },
+    h('div', {className:'section-header mb-6'},
+      h('div', null,
+        h('h2',{style:{fontSize:20,fontWeight:800,marginBottom:4}}, h('span',{className:'ai-pulse'},' AI Financial Advisor')),
+        h('p',{style:{color:'var(--text2)',fontSize:13}},'Personalized insights powered by Claude AI')
+      )
+    ),
+    h('div', {className:'card mb-6', style:{background:'linear-gradient(135deg,rgba(91,141,239,0.08),rgba(124,58,237,0.08))',border:'1px solid rgba(91,141,239,0.15)'}},
+      h('div',{className:'section-header',style:{marginBottom:16}}, h('span',{className:'section-header-title',style:{display:'flex',alignItems:'center',gap:8}}, h('i',{className:'ti ti-robot',style:{color:'var(--accent)'}}), 'Ask Your AI Advisor')),
+      h('div',{style:{display:'flex',gap:10}},
+        h('input',{className:'form-input',style:{flex:1},placeholder:'Ask anything — "How can I save more?" or "Analyze my spending"...',value:prompt,onChange:e=>setPrompt(e.target.value),onKeyDown:e=>e.key==='Enter'&&askAI()}),
+        h('button',{className:'btn btn-primary',onClick:askAI,disabled:loading},
+          loading ? h('div',{className:'spinner'}) : h('i',{className:'ti ti-send'}), !loading && ' Ask AI'
+        )
+      ),
+      h('div',{style:{display:'flex',gap:8,marginTop:12,flexWrap:'wrap'}},
+        ['How to cut food costs?','Best savings strategy?','Am I overspending?','Investment tips?'].map(q =>
+          h('button',{key:q,className:'chip',onClick:()=>setPrompt(q)},q)
+        )
+      ),
+      aiResponse && h('div',{style:{marginTop:20,padding:'16px 18px',background:'var(--surface)',borderRadius:'var(--radius)',border:'1px solid var(--border)'}},
+        h('div',{style:{fontSize:12,fontWeight:700,color:'var(--accent)',marginBottom:10,display:'flex',alignItems:'center',gap:6}}, h('i',{className:'ti ti-sparkles'}), 'AI Response'),
+        h('div',{style:{fontSize:13.5,color:'var(--text)',lineHeight:1.7,whiteSpace:'pre-wrap'}}, aiResponse)
+      )
+    ),
+    h('div',{className:'section-header mb-4'}, h('span',{className:'section-header-title'},'Auto-Generated Insights'), h('span',{style:{fontSize:11,color:'var(--text3)'}}, dynamicInsights.length ? 'from Python ML model' : '')),
+    h('div',{className:'grid-2'},
+      insightsToShow.map(ins => h('div',{key:ins.id,className:'card',style:{background:'linear-gradient(135deg,rgba(91,141,239,0.05),rgba(124,58,237,0.05))'}},
+        h('div',{style:{display:'flex',gap:12,alignItems:'flex-start'}},
+          h('div',{style:{width:40,height:40,borderRadius:'var(--radius-sm)',background:'rgba(91,141,239,0.15)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}},
+            h('i',{className:'ti '+ins.icon,style:{fontSize:20,color:'var(--accent)'}})
+          ),
+          h('div',{style:{flex:1}},
+            h('div',{style:{fontSize:14,fontWeight:700,marginBottom:6,color:'var(--text)'}}, ins.title),
+            h('div',{style:{fontSize:13,color:'var(--text2)',lineHeight:1.6}}, ins.text),
+            h('div',{className:'insight-tag',style:{marginTop:8}}, ins.tag)
+          )
+        )
+      ))
+    )
+  );
+}
+
+function Notifications() {
+  const [notifs, setNotifs] = useState(NOTIFICATIONS);
+  function markRead(id) { setNotifs(ns => ns.map(n => n.id===id ? {...n,unread:false} : n)); }
+  function markAll() { setNotifs(ns => ns.map(n => ({...n,unread:false}))); }
+  const unread = notifs.filter(n=>n.unread).length;
+  return h('div', { className:'page-content' },
+    h('div',{className:'section-header mb-6'},
+      h('div', null,
+        h('h2',{style:{fontSize:20,fontWeight:800,marginBottom:4}},'Notifications'),
+        h('p',{style:{color:'var(--text2)',fontSize:13}}, unread + ' unread')
+      ),
+      unread > 0 && h('button',{className:'btn btn-secondary',onClick:markAll},'Mark all read')
+    ),
+    h('div',{className:'card'},
+      notifs.map(n => h('div',{key:n.id,className:'notif-item',style:{opacity:n.unread?1:0.6}},
+        h('div',{className:'notif-dot-small',style:{background:n.color,marginTop:6}}),
+        h('div',{className:'notif-content'},
+          h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:3}},
+            h('span',{className:'notif-title'},n.title),
+            n.unread && h('span',{style:{width:6,height:6,borderRadius:'50%',background:'var(--accent)',display:'inline-block'}})
+          ),
+          h('div',{className:'notif-desc'},n.desc)
+        ),
+        h('div',{style:{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:6}},
+          h('span',{className:'notif-time'},n.time),
+          n.unread && h('button',{className:'btn btn-secondary btn-sm',onClick:()=>markRead(n.id)},'Dismiss')
+        )
+      ))
+    )
+  );
+}
+
+function Settings({ theme, setTheme }) {
+  const [saved, setSaved] = useState(false);
+  function save() { setSaved(true); setTimeout(()=>setSaved(false),2500); }
+  return h('div', { className:'page-content' },
+    h('h2',{style:{fontSize:20,fontWeight:800,marginBottom:24}},'Settings'),
+    h('div',{className:'grid-2'},
+      h('div',{className:'card mb-4'},
+        h('div',{className:'section-header mb-4'}, h('span',{className:'section-header-title'},'Profile')),
+        h('div',{style:{display:'flex',alignItems:'center',gap:14,marginBottom:20}},
+          h('div',{className:'avatar',style:{width:52,height:52,fontSize:18}},'KP'),
+          h('div', null,
+            h('div',{style:{fontWeight:700,marginBottom:3}},'Komal Patel'),
+            h('div',{style:{fontSize:13,color:'var(--text3)'}},'komal@email.com'),
+            h('button',{className:'btn btn-secondary btn-sm',style:{marginTop:8}},'Change photo')
+          )
+        ),
+        h('div',{className:'form-group'}, h('label',{className:'form-label'},'Full Name'), h('input',{className:'form-input',defaultValue:'Komal Patel'})),
+        h('div',{className:'form-group'}, h('label',{className:'form-label'},'Email'), h('input',{className:'form-input',defaultValue:'komal@email.com',type:'email'})),
+        h('div',{className:'form-group'}, h('label',{className:'form-label'},'Currency'), h('select',{className:'form-input'}, h('option',null,'INR — Indian Rupee'),h('option',null,'USD — US Dollar'), h('option','EUR — Euro'), h('option','GBP — British Pound'))),
+        h('button',{className:'btn btn-primary',onClick:save}, saved ? h('i',{className:'ti ti-check'}) : null, saved ? ' Saved!' : 'Save Changes')
+      ),
+      h('div', null,
+        h('div',{className:'card mb-4'},
+          h('div',{className:'section-header mb-4'}, h('span',{className:'section-header-title'},'Appearance')),
+          h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 0'}},
+            h('div', null, h('div',{style:{fontWeight:600,fontSize:14}},'Dark Mode'), h('div',{style:{fontSize:12,color:'var(--text3)',marginTop:2}},'Toggle dark/light theme')),
+            h('button',{onClick:()=>setTheme(theme==='dark'?'light':'dark'),style:{width:44,height:24,borderRadius:12,background:theme==='dark'?'var(--accent)':'var(--bg4)',border:'none',cursor:'pointer',position:'relative',transition:'background 0.2s'}},
+              h('span',{style:{position:'absolute',top:2,left:theme==='dark'?22:2,width:20,height:20,borderRadius:'50%',background:'white',transition:'left 0.2s',display:'block'}})
+            )
+          )
+        ),
+        h('div',{className:'card'},
+          h('div',{className:'section-header mb-4'}, h('span',{className:'section-header-title'},'Notifications')),
+          [['Bill reminders',true],['Budget alerts',true],['AI insights',true],['Weekly report',false]].map(([label,def]) =>
+            h('div',{key:label,style:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 0',borderBottom:'1px solid var(--border)'}},
+              h('span',{style:{fontSize:14,color:'var(--text)'}}),h('span',null,label),
+              h('input',{type:'checkbox',defaultChecked:def,style:{width:16,height:16,cursor:'pointer'}})
+            )
+          )
+        )
+      )
+    )
+  );
+}
+
+// ============ AUTH PAGES ============
+function LoginPage({ setAuth, setPage: setAuthPage }) {
+  const [form, setForm] = useState({email:'',password:''});
+  const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+  async function login() {
+    const e = {};
+    if (!form.email.includes('@')) e.email = 'Enter a valid email';
+    if (form.password.length < 6) e.password = 'Password must be 6+ characters';
+    setErrors(e); if (Object.keys(e).length) return;
+    setLoading(true);
+    try {
+      const res = await api.login(form.email, form.password);
+      api.setToken(res.token);
+      setLoading(false);
+      setAuth(true);
+    } catch (err) {
+      setLoading(false);
+      setErrors({ password: err.message || 'Login failed. Check your backend connection.' });
+    }
+  }
+  return h('div', {className:'auth-page'},
+    h('div', {className:'auth-container'},
+      h('div', {className:'auth-logo'},
+        h('div', {className:'logo-icon'}, h('i',{className:'ti ti-chart-pie'})),
+        h('span', {className:'logo-text',style:{fontSize:24}},'FinAI')
+      ),
+      h('div', {className:'auth-card'},
+        h('h1', {className:'auth-title'}, 'Welcome back'),
+        h('p', {className:'auth-subtitle'}, 'Sign in to your FinAI account'),
+        h('div', {className:'form-group'},
+          h('label', {className:'form-label'}, 'Email'),
+          h('input', {className:'form-input',type:'email',placeholder:'you@email.com',value:form.email,onChange:e=>setForm({...form,email:e.target.value})}),
+          errors.email && h('div',{className:'form-error'},errors.email)
+        ),
+        h('div', {className:'form-group'},
+          h('label', {className:'form-label',style:{display:'flex',justifyContent:'space-between'}},
+            'Password',
+            h('span', {className:'auth-link',style:{fontWeight:500,fontSize:12},onClick:()=>setAuthPage('forgot')}, 'Forgot password?')
+          ),
+          h('input', {className:'form-input',type:'password',placeholder:'••••••••',value:form.password,onChange:e=>setForm({...form,password:e.target.value}),onKeyDown:e=>e.key==='Enter'&&login()}),
+          errors.password && h('div',{className:'form-error'},errors.password)
+        ),
+        h('button', {className:'btn btn-primary w-full',style:{justifyContent:'center',padding:'11px',fontSize:14,marginBottom:16},onClick:login,disabled:loading},
+          loading ? h('div',{className:'spinner'}) : 'Sign In'
+        ),
+        h('div', {className:'auth-divider'}, h('span',null,'or continue with')),
+        h('button', {className:'social-btn',style:{marginBottom:20}},
+          h('i',{className:'ti ti-brand-google',style:{fontSize:18,color:'#ea4335'}}), 'Continue with Google'
+        ),
+        h('p', {style:{textAlign:'center',fontSize:13.5,color:'var(--text2)'}},
+          "Don't have an account? ", h('span', {className:'auth-link',onClick:()=>setAuthPage('signup')}, 'Sign up free')
+        )
+      )
+    )
+  );
+}
+
+function SignupPage({ setAuth, setPage: setAuthPage }) {
+  const [form, setForm] = useState({name:'',email:'',password:'',confirm:''});
+  const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+  async function signup() {
+    const e = {};
+    if (!form.name.trim()) e.name = 'Name required';
+    if (!form.email.includes('@')) e.email = 'Valid email required';
+    if (form.password.length < 8) e.password = 'At least 8 characters';
+    if (form.password !== form.confirm) e.confirm = 'Passwords do not match';
+    setErrors(e); if (Object.keys(e).length) return;
+    setLoading(true);
+    try {
+      const res = await api.register(form.name, form.email, form.password);
+      api.setToken(res.token);
+      setLoading(false);
+      setAuth(true);
+    } catch (err) {
+      setLoading(false);
+      setErrors({ confirm: err.message || 'Signup failed. Check your backend connection.' });
+    }
+  }
+  return h('div', {className:'auth-page'},
+    h('div', {className:'auth-container'},
+      h('div', {className:'auth-logo'},
+        h('div', {className:'logo-icon'}, h('i',{className:'ti ti-chart-pie'})),
+        h('span', {className:'logo-text',style:{fontSize:24}},'FinAI')
+      ),
+      h('div', {className:'auth-card'},
+        h('h1',{className:'auth-title'},'Create account'),
+        h('p',{className:'auth-subtitle'},'Start your financial journey'),
+        h('div',{className:'form-group'}, h('label',{className:'form-label'},'Full Name'), h('input',{className:'form-input',placeholder:'Komal Patel',value:form.name,onChange:e=>setForm({...form,name:e.target.value})}), errors.name&&h('div',{className:'form-error'},errors.name)),
+        h('div',{className:'form-group'}, h('label',{className:'form-label'},'Email'), h('input',{className:'form-input',type:'email',placeholder:'you@email.com',value:form.email,onChange:e=>setForm({...form,email:e.target.value})}), errors.email&&h('div',{className:'form-error'},errors.email)),
+        h('div',{className:'form-row'},
+          h('div',{className:'form-group'}, h('label',{className:'form-label'},'Password'), h('input',{className:'form-input',type:'password',placeholder:'••••••••',value:form.password,onChange:e=>setForm({...form,password:e.target.value})}), errors.password&&h('div',{className:'form-error'},errors.password)),
+          h('div',{className:'form-group'}, h('label',{className:'form-label'},'Confirm'), h('input',{className:'form-input',type:'password',placeholder:'••••••••',value:form.confirm,onChange:e=>setForm({...form,confirm:e.target.value})}), errors.confirm&&h('div',{className:'form-error'},errors.confirm))
+        ),
+        h('button',{className:'btn btn-primary w-full',style:{justifyContent:'center',padding:'11px',fontSize:14,marginBottom:16},onClick:signup,disabled:loading},
+          loading?h('div',{className:'spinner'}):'Create Account'
+        ),
+        h('p',{style:{textAlign:'center',fontSize:12,color:'var(--text3)',marginBottom:16}},'By signing up you agree to our Terms & Privacy Policy'),
+        h('p',{style:{textAlign:'center',fontSize:13.5,color:'var(--text2)'}},
+          'Already have an account? ', h('span',{className:'auth-link',onClick:()=>setAuthPage('login')},'Sign in')
+        )
+      )
+    )
+  );
+}
+
+function ForgotPage({ setPage: setAuthPage }) {
+  const [email, setEmail] = useState('');
+  const [sent, setSent] = useState(false);
+  return h('div', {className:'auth-page'},
+    h('div', {className:'auth-container'},
+      h('div', {className:'auth-logo'}, h('div',{className:'logo-icon'},h('i',{className:'ti ti-chart-pie'})), h('span',{className:'logo-text',style:{fontSize:24}},'FinAI')),
+      h('div', {className:'auth-card'},
+        !sent ? [
+          h('h1',{className:'auth-title',key:'t'},'Reset password'),
+          h('p',{className:'auth-subtitle',key:'s'},'Enter your email and we\'ll send a reset link'),
+          h('div',{className:'form-group',key:'f'}, h('label',{className:'form-label'},'Email'), h('input',{className:'form-input',type:'email',placeholder:'you@email.com',value:email,onChange:e=>setEmail(e.target.value)})),
+          h('button',{key:'b',className:'btn btn-primary w-full',style:{justifyContent:'center',padding:'11px',fontSize:14,marginBottom:16},onClick:()=>setSent(true)},'Send Reset Link')
+        ] : [
+          h('div',{key:'icon',style:{textAlign:'center',marginBottom:20}}, h('i',{className:'ti ti-mail-check',style:{fontSize:56,color:'var(--accent3)'}})),
+          h('h1',{key:'t',className:'auth-title'},'Check your inbox'),
+          h('p',{key:'s',className:'auth-subtitle'},'We sent a reset link to '+email),
+        ],
+        h('p',{style:{textAlign:'center',fontSize:13.5,color:'var(--text2)',marginTop:12}},
+          h('span',{className:'auth-link',onClick:()=>setAuthPage('login')}, h('i',{className:'ti ti-arrow-left',style:{fontSize:12}}), ' Back to sign in')
+        )
+      )
+    )
+  );
+}
+
+// ============ LANDING PAGE ============
+function Landing({ setAuth, setAuthPage, setShowAuth }) {
+  const features = [
+    {icon:'ti-brain',color:'#5b8def',bg:'rgba(91,141,239,0.12)',title:'AI-Powered Insights',desc:'Claude AI analyzes your spending patterns and gives personalized recommendations to optimize your finances.'},
+    {icon:'ti-chart-pie',color:'#9f67f5',bg:'rgba(159,103,245,0.12)',title:'Visual Analytics',desc:'Interactive charts and dashboards give you a crystal-clear picture of where your money goes every month.'},
+    {icon:'ti-shield-check',color:'#06d6a0',bg:'rgba(6,214,160,0.12)',title:'Bank-Level Security',desc:'JWT authentication, encrypted storage, and SOC2 compliance keep your financial data completely safe.'},
+    {icon:'ti-bell',color:'#f59e0b',bg:'rgba(245,158,11,0.12)',title:'Smart Alerts',desc:'Never miss a bill payment again. Get notified before due dates and when you\'re approaching budget limits.'},
+    {icon:'ti-file-analytics',color:'#ef4444',bg:'rgba(239,68,68,0.12)',title:'Detailed Reports',desc:'Generate and download comprehensive PDF reports for any time period — perfect for tax season.'},
+    {icon:'ti-device-mobile',color:'#ec4899',bg:'rgba(236,72,153,0.12)',title:'Works Everywhere',desc:'Fully responsive design works flawlessly on desktop, tablet, and mobile. Your finances, anywhere.'},
+  ];
+  const reviews = [
+    {name:'Priya Sharma',role:'Product Manager',avatar:'PS',color:'#5b8def',stars:5,text:'FinAI completely transformed how I manage money. The AI insights caught a subscription I\'d forgotten about — saved me ₹180/year!'},
+    {name:'Raj Mehta',role:'Software Engineer',avatar:'RM',color:'#06d6a0',stars:5,text:'The dashboard is stunning and the budget tracking is exactly what I needed. Switching from spreadsheets was the best decision.'},
+    {name:'Sarah Chen',role:'Freelance Designer',avatar:'SC',color:'#9f67f5',stars:5,text:'Love how it categorizes transactions automatically. The spending analysis helped me cut food costs by 30% in just two months.'},
+  ];
+  return h('div', {className:'landing'},
+    h('nav', {className:'landing-nav'},
+      h('div', {className:'landing-nav-logo'},
+        h('div',{className:'logo-icon'},h('i',{className:'ti ti-chart-pie'})),
+        h('span',{className:'logo-text',style:{fontSize:22}},'FinAI')
+      ),
+      h('div', {className:'landing-nav-links'},
+        h('a',{href:'#features'},'Features'),
+        h('a',{href:'#pricing'},'Pricing'),
+        h('a',{href:'#reviews'},'Reviews')
+      ),
+      h('div', {className:'landing-nav-actions'},
+        h('button',{className:'btn btn-secondary',onClick:()=>{setAuthPage('login');setShowAuth(true)}},'Sign In'),
+        h('button',{className:'btn btn-primary',onClick:()=>{setAuthPage('signup');setShowAuth(true)}}, h('i',{className:'ti ti-rocket'}), 'Get Started Free')
+      )
+    ),
+    h('section', {className:'hero'},
+      h('div',{className:'hero-bg'}),
+      h('div',{className:'hero-content'},
+        h('div',{className:'hero-badge'}, h('i',{className:'ti ti-sparkles',style:{fontSize:13}}), 'Powered by Claude AI'),
+        h('h1',{className:'hero-title'}, 'Your money,', h('br'), h('span',null,'intelligently managed')),
+        h('p',{className:'hero-sub'}, 'Track expenses, set budgets, and get AI-powered financial advice — all in one beautiful dashboard.'),
+        h('div',{className:'hero-actions'},
+          h('button',{className:'btn btn-primary btn-hero',onClick:()=>{setAuthPage('signup');setShowAuth(true)}}, 'Start for free', h('i',{className:'ti ti-arrow-right'})),
+          h('button',{className:'btn btn-secondary btn-hero',onClick:()=>setAuth(true)}, h('i',{className:'ti ti-layout-dashboard'}), 'View demo')
+        ),
+        h('div',{className:'hero-stats'},
+          [{value:'50K+',label:'Active users'},{value:'₹2.1B',label:'Tracked'},{value:'4.9★',label:'App rating'},{value:'99.9%',label:'Uptime'}].map(s=>
+            h('div',{key:s.label,className:'hero-stat'},
+              h('div',{className:'hero-stat-value'},s.value),
+              h('div',{className:'hero-stat-label'},s.label)
+            )
+          )
+        )
+      )
+    ),
+    h('section', {className:'features-section', id:'features'},
+      h('div',{className:'section-eyebrow'},'Features'),
+      h('h2',{className:'section-title'},'Everything you need to master your finances'),
+      h('p',{className:'section-sub'},'From expense tracking to AI insights, FinAI has every tool you need.'),
+      h('div',{className:'feature-grid'},
+        features.map(f => h('div',{key:f.title,className:'feature-card'},
+          h('div',{className:'feature-icon',style:{background:f.bg}}, h('i',{className:'ti '+f.icon,style:{color:f.color}})),
+          h('h3',{className:'feature-title'},f.title),
+          h('p',{className:'feature-desc'},f.desc)
+        ))
+      )
+    ),
+    h('section', {className:'pricing-section', id:'pricing'},
+      h('div',{className:'section-eyebrow'},'Pricing'),
+      h('h2',{className:'section-title'},'Simple, transparent pricing'),
+      h('p',{className:'section-sub'},'Start free, upgrade when you need more.'),
+      h('div',{className:'pricing-grid'},
+        [
+          {name:'Starter',price:'0',desc:'Perfect for getting started with personal finance tracking.',features:[['Expense tracking','ti-check'],['Basic charts','ti-check'],['3 budget categories','ti-check'],['Email alerts','ti-check'],['AI insights','ti-x',true],['PDF reports','ti-x',true]],btn:'Get started free',primary:false},
+          {name:'Pro',price:'9',desc:'For serious budgeters who want AI-powered insights.',features:[['Unlimited transactions','ti-check'],['Advanced analytics','ti-check'],['Unlimited categories','ti-check'],['Smart notifications','ti-check'],['Full AI advisor','ti-check'],['PDF reports','ti-check']],btn:'Start Pro trial',primary:true,badge:'Most Popular'},
+          {name:'Family',price:'19',desc:'Manage finances for the whole household together.',features:[['Everything in Pro','ti-check'],['Up to 5 members','ti-check'],['Shared budgets','ti-check'],['Family dashboard','ti-check'],['Priority support','ti-check'],['API access','ti-check']],btn:'Start Family plan',primary:false},
+        ].map(p => h('div',{key:p.name,className:'pricing-card'+(p.primary?' featured':'')},
+          p.badge && h('div',{className:'pricing-badge'},p.badge),
+          h('div',{className:'pricing-name'},p.name),
+          h('div',{className:'pricing-price'}, h('sup',null,'₹'), p.price==='0'?'Free':p.price, p.price!=='0'&&h('sub',null,'/month')),
+          h('p',{className:'pricing-desc'},p.desc),
+          h('ul',{className:'pricing-features'},
+            p.features.map(([label,icon,na])=>h('li',{key:label,className:na?'na':''},
+              h('i',{className:'ti '+icon,style:{color:na?'var(--text3)':'var(--accent3)'}}), label
+            ))
+          ),
+          h('button',{className:'btn '+(p.primary?'btn-primary':'btn-secondary')+' w-full',style:{justifyContent:'center',padding:'11px'},onClick:()=>{setAuthPage('signup');setShowAuth(true)}},p.btn)
+        ))
+      )
+    ),
+    h('section', {className:'reviews-section', id:'reviews'},
+      h('div',{className:'section-eyebrow'},'Reviews'),
+      h('h2',{className:'section-title'},'Loved by thousands'),
+      h('p',{className:'section-sub'},'Real users, real results.'),
+      h('div',{className:'reviews-grid'},
+        reviews.map(r => h('div',{key:r.name,className:'review-card'},
+          h('div',{className:'review-stars'},'★'.repeat(r.stars)),
+          h('p',{className:'review-text'},r.text),
+          h('div',{className:'reviewer'},
+            h('div',{className:'reviewer-avatar',style:{background:r.color}},r.avatar),
+            h('div',null, h('div',{className:'reviewer-name'},r.name), h('div',{className:'reviewer-role'},r.role))
+          )
+        ))
+      )
+    ),
+    h('section', {className:'cta-section'},
+      h('div',{className:'cta-card'},
+        h('h2',{className:'cta-title'},'Ready to take control?'),
+        h('p',{className:'cta-sub'},'Join 50,000+ people who track smarter with FinAI.'),
+        h('div',{style:{display:'flex',gap:14,justifyContent:'center',flexWrap:'wrap'}},
+          h('button',{className:'btn btn-primary btn-hero',onClick:()=>{setAuthPage('signup');setShowAuth(true)}},'Create free account', h('i',{className:'ti ti-arrow-right'})),
+          h('button',{className:'btn btn-secondary btn-hero',onClick:()=>setAuth(true)}, 'See the demo')
+        )
+      )
+    ),
+    h('footer', {className:'footer'},
+      h('div',{className:'footer-text'}, '© 2024 FinAI — AI-Powered Expense Tracker. Built with ♥ and Claude AI.')
+    )
+  );
+}
+
+// ============ APP ============
+function App() {
+  const [theme, setThemeState] = useState('dark');
+  const [auth, setAuthState] = useState(!!api.token);
+  const [authPage, setAuthPage] = useState('login');
+  const [showAuth, setShowAuth] = useState(false);
+  const [page, setPage] = useState('dashboard');
+  const [transactions, setTransactions] = useState([]);
+  const [dataLoading, setDataLoading] = useState(false);
+
+  function setAuth(val) {
+    setAuthState(val);
+    if (!val) api.setToken(null);
+  }
+  window.finaiLogout = () => { setAuth(false); };
+
+  function setTheme(t) {
+    setThemeState(t);
+    document.documentElement.setAttribute('data-theme', t);
+  }
+
+  useEffect(() => { document.documentElement.setAttribute('data-theme', theme); }, []);
+
+  useEffect(() => {
+    if (!auth) return;
+    setDataLoading(true);
+    api.getTransactions()
+      .then(res => setTransactions((res.transactions || []).map(t => ({ ...t, id: t._id }))))
+      .catch(() => { /* backend offline — start with an empty ledger */ })
+      .finally(() => setDataLoading(false));
+  }, [auth]);
+
+  const pageTitles = { dashboard:'Dashboard', expenses:'Expenses', analytics:'Analytics', budget:'Budget', ai:'AI Insights', reports:'Reports', notifications:'Notifications', settings:'Settings' };
+
+  if (!auth && !showAuth) {
+    return h(Landing, { setAuth, setAuthPage, setShowAuth });
+  }
+  if (!auth && showAuth) {
+    if (authPage === 'signup') return h(SignupPage, { setAuth, setPage: setAuthPage });
+    if (authPage === 'forgot') return h(ForgotPage, { setPage: setAuthPage });
+    return h(LoginPage, { setAuth, setPage: setAuthPage });
+  }
+
+  const pageMap = {
+    dashboard: h(Dashboard, { setPage, transactions, loading: dataLoading }),
+    expenses: h(Expenses, { transactions, setTransactions }),
+    analytics: h(Analytics, { transactions }),
+    budget: h(Budget),
+    ai: h(AIInsights),
+    reports: h(Analytics, { transactions }),
+    notifications: h(Notifications),
+    settings: h(Settings, { theme, setTheme }),
+  };
+
+  return h('div', { className:'app-layout' },
+    h(Sidebar, { page, setPage, theme, setTheme }),
+    h('div', { className:'main-content' },
+      h(Topbar, { title: pageTitles[page] || 'Dashboard', theme, setTheme, setPage }),
+      pageMap[page] || pageMap.dashboard
+    )
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(h(App));
+</script>
+</body>
+</html>
