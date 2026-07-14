@@ -19,6 +19,20 @@ const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
 
+// Trust Vercel's proxy (fixes rate limiter issue)
+app.set('trust proxy', 1);
+
+// Database connection middleware (ensures DB is connected before query executes)
+const connectDB = require('./config/database');
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Security middleware
 app.use(helmet());
 app.use(mongoSanitize());
