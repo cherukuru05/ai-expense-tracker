@@ -1,19 +1,24 @@
 const nodemailer = require('nodemailer');
 const logger = require('../utils/logger');
 
-const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: parseInt(process.env.EMAIL_PORT || '587'),
-  secure: false,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+// Create transporter lazily — only when email credentials are available
+function getTransporter() {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) return null;
+  return nodemailer.createTransport({
+    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.EMAIL_PORT || '587'),
+    secure: false,
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+}
 
 exports.sendBillReminder = async (to, name, { billName, amount, dueDate, daysLeft }) => {
+  const transporter = getTransporter();
+  if (!transporter) return;
   const urgency = daysLeft <= 1 ? '🚨 URGENT' : daysLeft <= 2 ? '⚠️ Soon' : '📅 Reminder';
-
   await transporter.sendMail({
     from: `"FinTrack AI" <${process.env.EMAIL_USER}>`,
     to,
@@ -36,6 +41,8 @@ exports.sendBillReminder = async (to, name, { billName, amount, dueDate, daysLef
 };
 
 exports.sendWeeklySummary = async (to, name, summary) => {
+  const transporter = getTransporter();
+  if (!transporter) return;
   await transporter.sendMail({
     from: `"FinTrack AI" <${process.env.EMAIL_USER}>`,
     to,
@@ -53,6 +60,8 @@ exports.sendWeeklySummary = async (to, name, summary) => {
 };
 
 exports.sendWelcome = async (to, name) => {
+  const transporter = getTransporter();
+  if (!transporter) return;
   await transporter.sendMail({
     from: `"FinTrack AI" <${process.env.EMAIL_USER}>`,
     to,
