@@ -23,6 +23,8 @@ exports.errorHandler = (err, req, res, next) => {
   // Default
   const status = err.statusCode || 500;
   res.status(status).json({
-    error: status === 500 ? 'Something went wrong. Please try again.' : err.message,
+    error: err.message,
+    stack: process.env.NODE_ENV === 'production' ? 'hidden' : err.stack,
+    fullError: err.toString()
   });
 };
