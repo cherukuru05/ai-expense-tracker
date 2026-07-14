@@ -1223,8 +1223,15 @@ function LoginPage({ setAuth, setPage: setAuthPage }) {
           h('input', {className:'form-input',type:'password',placeholder:'••••••••',value:form.password,onChange:e=>setForm({...form,password:e.target.value}),onKeyDown:e=>e.key==='Enter'&&login()}),
           errors.password && h('div',{className:'form-error'},errors.password)
         ),
-        h('button', {className:'btn btn-primary w-full',style:{justifyContent:'center',padding:'11px',fontSize:14,marginBottom:16},onClick:login,disabled:loading},
+        h('button', {className:'btn btn-primary w-full',style:{justifyContent:'center',padding:'11px',fontSize:14,marginBottom:12},onClick:login,disabled:loading},
           loading ? h('div',{className:'spinner'}) : 'Sign In'
+        ),
+        h('button', {className:'btn w-full',style:{justifyContent:'center',padding:'11px',fontSize:14,marginBottom:16,background:'linear-gradient(135deg,rgba(6,214,160,0.15),rgba(91,141,239,0.15))',border:'1px solid rgba(6,214,160,0.3)',color:'var(--accent3)',fontWeight:700},onClick:()=>setAuth(true)},
+          h('i',{className:'ti ti-layout-dashboard',style:{fontSize:16}}), '\u00a0Try Demo — No Backend Needed'
+        ),
+        h('div',{style:{background:'rgba(91,141,239,0.08)',border:'1px solid rgba(91,141,239,0.2)',borderRadius:'var(--radius-sm)',padding:'10px 14px',marginBottom:18,display:'flex',alignItems:'flex-start',gap:8}},
+          h('i',{className:'ti ti-info-circle',style:{color:'var(--accent)',fontSize:15,flexShrink:0,marginTop:1}}),
+          h('span',{style:{fontSize:12,color:'var(--text2)',lineHeight:1.5}}, h('strong',{style:{color:'var(--text)'}},'Demo mode: '), 'Instantly explore the app with sample data. No account or server required.')
         ),
         h('div', {className:'auth-divider'}, h('span',null,'or continue with')),
         h('button', {className:'social-btn',style:{marginBottom:20}},

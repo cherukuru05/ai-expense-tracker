@@ -1,107 +1,82 @@
-# ai-expense-tracker
-AI Financial Expense Tracker - Full Stack Project
-# FinAI — AI Financial Expense Tracker (Full Stack)
+# FinTrack AI - Complete Guide
 
-This fulfills the PDF brief's **Backend Requirements** (REST APIs, database integration,
-AI model/API integration, role management) by adding a real Node.js/Express + MongoDB
-backend behind your existing frontend.
+This guide covers everything you need to know to run the full project locally on your machine and how to deploy it to the cloud.
 
+---
+
+## 💻 1. Running Locally (Windows)
+
+Your project consists of 4 parts: MongoDB (Database), Express API (Backend), Python (ML Service), and React (Frontend).
+
+### The Easiest Way (One-Click)
+1. Go to your project folder: `C:\Users\cheru\Desktop\Ai financial Tracker`
+2. Double-click the **`start-all.bat`** file.
+3. This will automatically open three background windows for MongoDB, Backend, and ML Service.
+4. Finally, open a terminal in the `frontend` folder and run `npm run dev` to start the UI.
+5. Open your browser to `http://localhost:5173`.
+
+### The Manual Way (Terminal by Terminal)
+If you prefer to start them individually, open 4 separate command prompts:
+
+**Terminal 1: Database (MongoDB)**
+```bash
+"C:\Program Files\MongoDB\Server\8.0\bin\mongod.exe" --dbpath "D:\mongodb_data" --port 27017
 ```
-finai/
-├── backend/      Node.js + Express + MongoDB REST API, JWT auth, role management,
-│                 Python ML model for AI budget suggestions
-└── frontend/     Your existing UI (index.html), now wired to the backend via fetch()
-```
 
-## 1. Backend setup
-
+**Terminal 2: Backend API**
 ```bash
 cd backend
 npm install
-cp .env.example .env      # then edit MONGO_URI / JWT_SECRET as needed
+node src/server.js
 ```
 
-Requirements:
-- Node.js 18+
-- MongoDB running locally (`mongodb://localhost:27017/finai`) or a MongoDB Atlas URI
-- Python 3 (used by the AI budget-suggestion model — no extra pip installs needed,
-  it only uses the standard library)
-
-Seed the database with demo data (matches the original mock data in the frontend):
-```bash
-npm run seed
-# Demo login -> email: komal@email.com / password: password123
-```
-
-Run the API:
-```bash
-npm run dev      # nodemon, auto-restarts on changes
-# or
-npm start
-```
-The API listens on `http://localhost:5000/api` by default. Check `GET /api/health`.
-
-## 2. Frontend setup
-
-The frontend is a single static file: `frontend/index.html`. It now talks to the
-backend via a small `api` client built into the page (see the `<script>` near the top
-that sets `window.FINAI_API_BASE`). Open it with any static file server:
-
+**Terminal 3: Frontend (React UI)**
 ```bash
 cd frontend
-python3 -m http.server 3000
-```
-Then visit `http://localhost:3000`. Sign up for an account (or sign in with the seeded
-demo account above) — this calls the real `/api/auth/register` / `/api/auth/login`
-endpoints, stores a JWT, and loads your transactions from MongoDB.
-
-If your backend isn't on `localhost:5000`, set the base URL before the page's scripts
-run, e.g. by editing the inline `<script>` tag at the top of `index.html`:
-```html
-<script>window.FINAI_API_BASE = 'https://your-api-domain.com/api';</script>
+npm install
+npm run dev
 ```
 
-## 3. What's wired up vs. still using demo data
+**Terminal 4: Machine Learning Service (Optional but recommended)**
+```bash
+D:\ml_env\Scripts\python.exe ml-service\main.py
+```
 
-| Module | Status |
-|---|---|
-| Auth (login/signup) | ✅ Real JWT auth against MongoDB (`/api/auth`) |
-| Expense tracking (add/edit/delete) | ✅ Full CRUD against MongoDB (`/api/transactions`) |
-| Dashboard totals & recent transactions | ✅ Live, computed from your real transactions |
-| Budgets | ✅ Real budgets stored per user/month (`/api/budgets`) |
-| AI budget suggestions | ✅ Calls a Python ML model (`backend/ml/budget_suggestion.py`) via the API |
-| AI Q&A advisor | ✅ Calls backend `/api/ai/insights` (uses Claude if `ANTHROPIC_API_KEY` is set, otherwise a rule-based fallback — the API key never touches the browser) |
-| Bill reminders / notifications | ✅ API + model ready (`/api/reminders`); not yet wired into the Notifications page UI |
-| Analytics page charts | ⏳ Still using illustrative demo data — easy to wire to `/api/transactions/analytics/summary` and `/api/reports/monthly` the same way Dashboard was |
-| Role management | ✅ `user`/`admin` roles enforced via middleware; see `/api/admin/users` |
+---
 
-## 4. API reference (summary)
+## 🚀 2. Deploying to the Cloud
 
-| Method | Endpoint | Auth | Description |
-|---|---|---|---|
-| POST | /api/auth/register | – | Create account |
-| POST | /api/auth/login | – | Get JWT |
-| GET | /api/auth/me | ✅ | Current user profile |
-| GET | /api/transactions | ✅ | List/filter transactions |
-| POST | /api/transactions | ✅ | Create transaction |
-| PUT | /api/transactions/:id | ✅ | Update transaction |
-| DELETE | /api/transactions/:id | ✅ | Delete transaction |
-| GET | /api/transactions/analytics/summary | ✅ | Totals + category/monthly breakdown |
-| GET | /api/budgets | ✅ | List budgets for a month |
-| POST | /api/budgets | ✅ | Create/update a category budget |
-| GET | /api/reminders | ✅ | List bill reminders |
-| POST | /api/reminders | ✅ | Create reminder |
-| GET | /api/ai/budget-suggestions | ✅ | Python ML model output |
-| POST | /api/ai/insights | ✅ | Natural-language AI advisor |
-| GET | /api/reports/monthly | ✅ | Year-by-month income/expense report |
-| GET | /api/reports/export.csv | ✅ | CSV export of all transactions |
-| GET/PUT | /api/admin/users... | ✅ admin only | Role management |
+To share your project with the world, we need to deploy the database, backend, and frontend.
 
-## 5. Deployment notes
+### Step 1: Push code to GitHub
+Before deploying, make sure all your code is saved to GitHub:
+```bash
+git add .
+git commit -m "Final project setup"
+git push origin main
+```
 
-- **Database**: use MongoDB Atlas for production; put the connection string in `MONGO_URI`.
-- **Secrets**: set a strong random `JWT_SECRET`; never commit `.env`.
-- **CORS**: set `CLIENT_ORIGIN` to your deployed frontend's URL.
-- **AI key**: set `ANTHROPIC_API_KEY` on the server only — it is never sent to the browser.
-- Typical hosting: backend on Render/Railway/Fly.io/EC2, frontend as a static site
-  (Netlify/Vercel/S3+CloudFront) pointed at the backend via `FINAI_API_BASE`.
+### Step 2: Setup MongoDB Atlas (Cloud Database)
+Local MongoDB won't work on the internet.
+1. Go to [MongoDB Atlas](https://www.mongodb.com/cloud/atlas/register) and create a free account.
+2. Create a Free Cluster (M0).
+3. Under "Database Access", create a Database User with a password.
+4. Under "Network Access", add IP address `0.0.0.0/0` to allow all connections.
+5. Click **Connect** -> **Connect your application** and copy the Connection String.
+   *(It looks like: `mongodb+srv://<username>:<password>@cluster0.../fintrack`)*
+
+### Step 3: Deploy Backend & Frontend to Vercel
+Vercel is the easiest way to host React + Express apps.
+
+1. Go to [Vercel](https://vercel.com/) and create a free account using your GitHub.
+2. Click **Add New...** -> **Project**.
+3. Import your `ai-expense-tracker` repository from GitHub.
+4. Open the **Environment Variables** section before deploying and add:
+   * Name: `MONGODB_URI` | Value: *(Paste your MongoDB Atlas string here)*
+   * Name: `JWT_SECRET` | Value: `your_super_secret_random_string`
+   * Name: `VITE_API_URL` | Value: `/api`
+5. Click **Deploy**.
+
+Vercel will automatically read the `vercel.json` file we created earlier, build your React frontend, and turn your Express backend into serverless functions!
+
+Once the build is done, Vercel will give you a live URL (e.g., `https://fintrack-ai.vercel.app`) that you can share on your resume.

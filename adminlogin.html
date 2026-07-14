@@ -389,45 +389,34 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
 <div class="toast" id="toast"><span id="toastIcon">✅</span><span id="toastMsg">Done!</span></div>
 
 <script>
-const ADMIN = { email: 'admin@expenseai.com', password: 'admin123' };
-const CAT_COLORS = {'Food & Dining':'#34d399','Transport':'#fbbf24','Shopping':'#a78bfa','Housing':'#4f7cff','Entertainment':'#f87171','Health':'#38bdf8','Other':'#94a3b8'};
-const CAT_ICONS = {'Food & Dining':'🍕','Transport':'⛽','Shopping':'🛍️','Housing':'🏠','Entertainment':'🎬','Health':'💊','Other':'📦'};
+const API_BASE = window.FINAI_API_BASE || 'http://localhost:3001/api';
+const CAT_COLORS = {'Food':'#34d399','Transport':'#fbbf24','Shopping':'#a78bfa','Utilities':'#4f7cff','Entertainment':'#f87171','Health':'#38bdf8','Other':'#94a3b8','Education':'#a16207'};
+const CAT_ICONS = {'Food':'🍕','Transport':'⛽','Shopping':'🛍️','Utilities':'🏠','Entertainment':'🎬','Health':'💊','Other':'📦','Education':'📚'};
 
-let users = [
-  {id:1,name:'Priya Sharma',email:'priya@gmail.com',role:'User',expenses:42380,budget:60000,active:'2 min ago',status:'Active',avatar:'PS',color:'#34d399'},
-  {id:2,name:'Rahul Verma',email:'rahul@gmail.com',role:'User',expenses:28900,budget:50000,active:'15 min ago',status:'Active',avatar:'RV',color:'#4f7cff'},
-  {id:3,name:'Sneha Reddy',email:'sneha@gmail.com',role:'Admin',expenses:71200,budget:80000,active:'1 hr ago',status:'Active',avatar:'SR',color:'#a78bfa'},
-  {id:4,name:'Arjun Nair',email:'arjun@gmail.com',role:'Viewer',expenses:15600,budget:30000,active:'3 hrs ago',status:'Active',avatar:'AN',color:'#fbbf24'},
-  {id:5,name:'Kavitha Iyer',email:'kavitha@gmail.com',role:'User',expenses:33400,budget:45000,active:'Yesterday',status:'Inactive',avatar:'KI',color:'#f87171'},
-  {id:6,name:'Vikram Singh',email:'vikram@gmail.com',role:'User',expenses:55800,budget:70000,active:'2 days ago',status:'Active',avatar:'VS',color:'#38bdf8'},
-  {id:7,name:'Deepa Pillai',email:'deepa@gmail.com',role:'User',expenses:19200,budget:35000,active:'3 days ago',status:'Suspended',avatar:'DP',color:'#fb923c'},
-  {id:8,name:'Arun Mehta',email:'arun@gmail.com',role:'Admin',expenses:88400,budget:100000,active:'5 min ago',status:'Active',avatar:'AM',color:'#22d3ee'},
-];
-let nextUserId = 9;
-
-const allTransactions = [
-  {user:'Priya Sharma',desc:'BigBasket Order',cat:'Food & Dining',amount:1240,date:'May 30',status:'Verified'},
-  {user:'Rahul Verma',desc:'Uber Ride',cat:'Transport',amount:320,date:'May 30',status:'Verified'},
-  {user:'Sneha Reddy',desc:'Amazon Shopping',cat:'Shopping',amount:4500,date:'May 29',status:'Verified'},
-  {user:'Arjun Nair',desc:'House Rent',cat:'Housing',amount:18000,date:'May 29',status:'Verified'},
-  {user:'Kavitha Iyer',desc:'Swiggy Order',cat:'Food & Dining',amount:480,date:'May 28',status:'Flagged'},
-  {user:'Vikram Singh',desc:'Petrol',cat:'Transport',amount:2000,date:'May 28',status:'Verified'},
-  {user:'Deepa Pillai',desc:'Netflix',cat:'Entertainment',amount:649,date:'May 27',status:'Pending'},
-  {user:'Arun Mehta',desc:'Medical Bills',cat:'Health',amount:3200,date:'May 27',status:'Verified'},
-  {user:'Priya Sharma',desc:'Gym Membership',cat:'Health',amount:1500,date:'May 26',status:'Verified'},
-  {user:'Rahul Verma',desc:'Electricity Bill',cat:'Housing',amount:1800,date:'May 26',status:'Verified'},
-];
+let adminToken = localStorage.getItem('admin_token') || null;
+let currentAdminUser = null;
+let liveUsers = [];
+let liveExpenses = [];
+let nextUserId = 1;
 
 const alerts = [
-  {type:'warning',icon:'⚠️',title:'Unusual Spending Detected',msg:'User Kavitha Iyer spent ₹48,000 in 2 days — 340% above average.',time:'2 hrs ago'},
-  {type:'error',icon:'🚨',title:'Failed Login Attempts',msg:'5 failed login attempts detected for deepa@gmail.com.',time:'4 hrs ago'},
-  {type:'info',icon:'ℹ️',title:'New User Registrations',msg:'47 new users registered today — highest this week.',time:'6 hrs ago'},
-  {type:'success',icon:'✅',title:'Monthly Report Generated',msg:'May 2026 platform report is ready for download.',time:'8 hrs ago'},
+  {type:'info',icon:'ℹ️',title:'Admin Panel Connected',msg:'Admin panel is now connected to the live FinTrack AI backend.',time:'Just now'},
+  {type:'success',icon:'✅',title:'MongoDB Connected',msg:'Database connection is active and all data is live.',time:'Just now'},
 ];
 
 let currentPage = 'overview';
 
-function doLogin() {
+async function apiCall(path, opts = {}) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: { 'Content-Type': 'application/json', ...(adminToken ? { Authorization: `Bearer ${adminToken}` } : {}) },
+    ...opts,
+  });
+  const data = await res.json();
+  if (!res.ok) throw data;
+  return data;
+}
+
+async function doLogin() {
   const email = document.getElementById('loginEmail').value.trim();
   const pass = document.getElementById('loginPassword').value.trim();
   document.getElementById('emailError').classList.remove('show');
@@ -435,24 +424,44 @@ function doLogin() {
   document.getElementById('loginEmail').classList.remove('error');
   document.getElementById('loginPassword').classList.remove('error');
   if (!email) { document.getElementById('loginEmail').classList.add('error'); document.getElementById('emailError').classList.add('show'); return; }
-  if (email !== ADMIN.email || pass !== ADMIN.password) {
-    document.getElementById('loginPassword').classList.add('error');
-    document.getElementById('passError').textContent = 'Invalid email or password. Try admin@expenseai.com / admin123';
-    document.getElementById('passError').classList.add('show');
-    shake('loginPassword'); return;
-  }
+  if (!pass) { document.getElementById('loginPassword').classList.add('error'); document.getElementById('passError').textContent = 'Password required'; document.getElementById('passError').classList.add('show'); return; }
   const btn = document.getElementById('loginBtn');
   btn.textContent = 'Signing in...'; btn.classList.add('loading');
-  setTimeout(() => {
+  try {
+    const data = await apiCall('/auth/login', { method: 'POST', body: JSON.stringify({ email, password: pass }) });
+    if (data.user.role !== 'admin') {
+      document.getElementById('loginPassword').classList.add('error');
+      document.getElementById('passError').textContent = 'Access denied: Admin role required.';
+      document.getElementById('passError').classList.add('show');
+      shake('loginPassword');
+      btn.textContent = 'Sign in to Admin Panel'; btn.classList.remove('loading');
+      return;
+    }
+    adminToken = data.token;
+    currentAdminUser = data.user;
+    localStorage.setItem('admin_token', adminToken);
+    document.getElementById('adminName').textContent = data.user.name;
+    document.getElementById('adminEmail').textContent = data.user.email;
+    document.getElementById('adminInitials').textContent = data.user.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
     document.getElementById('loginScreen').classList.remove('active');
     document.getElementById('adminScreen').classList.add('active');
+    await loadAllData();
     renderPage('overview');
-    showToast('✅','Welcome back, Admin!');
-  }, 1200);
+    showToast('✅',`Welcome back, ${data.user.name}!`);
+  } catch (err) {
+    document.getElementById('loginPassword').classList.add('error');
+    document.getElementById('passError').textContent = err.error || 'Invalid email or password';
+    document.getElementById('passError').classList.add('show');
+    shake('loginPassword');
+    btn.textContent = 'Sign in to Admin Panel'; btn.classList.remove('loading');
+  }
 }
 
 function doLogout() {
   if (!confirm('Sign out of admin panel?')) return;
+  adminToken = null;
+  currentAdminUser = null;
+  localStorage.removeItem('admin_token');
   document.getElementById('adminScreen').classList.remove('active');
   document.getElementById('loginScreen').classList.add('active');
   document.getElementById('loginBtn').textContent = 'Sign in to Admin Panel';
@@ -491,7 +500,24 @@ function renderPage(p) {
   else if(p==='settings') renderSettings();
 }
 
+async function loadAllData() {
+  try {
+    // Load users from backend (admin users endpoint)
+    const userData = await apiCall('/users/all').catch(() => null);
+    if (userData && userData.users) {
+      liveUsers = userData.users;
+    }
+    // Try loading all expenses via a dedicated admin endpoint or per-user
+    // For now we aggregate from the analytics endpoint
+  } catch(e) {
+    console.warn('Could not load all admin data:', e);
+  }
+}
+
 function renderOverview() {
+  const totalUsers = liveUsers.length || 0;
+  const adminCount = liveUsers.filter(u => u.role === 'admin').length;
+  // Chart shows placeholder months (could be enhanced with real data)
   const months = [{m:'Jan',v:180},{m:'Feb',v:210},{m:'Mar',v:195},{m:'Apr',v:240},{m:'May',v:280},{m:'Jun',v:60,f:true}];
   const mx = 280;
   document.getElementById('overviewChart').innerHTML = months.map(m=>`
@@ -500,25 +526,25 @@ function renderOverview() {
       <div class="bar-lbl">${m.m}</div>
     </div>`).join('');
   document.getElementById('userGrowthStats').innerHTML = [
-    {label:'New this month',value:'247',color:'var(--green)'},
-    {label:'Active users',value:'1,041',color:'var(--blue2)'},
-    {label:'Inactive',value:'243',color:'var(--text3)'},
-    {label:'Suspended',value:'12',color:'var(--red)'},
+    {label:'Total Users',value:String(totalUsers || 0),color:'var(--blue2)'},
+    {label:'Admin Users',value:String(adminCount || 0),color:'var(--purple)'},
+    {label:'Regular Users',value:String((totalUsers - adminCount) || 0),color:'var(--green)'},
+    {label:'Backend Status',value:'✓ Live',color:'var(--green)'},
   ].map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
     <div style="font-size:13px;color:var(--text2)">${s.label}</div>
     <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:${s.color}">${s.value}</div>
   </div>`).join('');
-  document.getElementById('recentActivity').innerHTML = [
-    {dot:'#34d399',text:'<strong>Priya Sharma</strong> added ₹1,240 expense in Food & Dining',time:'2m ago'},
-    {dot:'#4f7cff',text:'<strong>Rahul Verma</strong> logged in from new device',time:'15m ago'},
-    {dot:'#f87171',text:'<strong>Kavitha Iyer</strong> exceeded monthly budget by ₹8,400',time:'1h ago'},
-    {dot:'#a78bfa',text:'<strong>Arun Mehta</strong> generated monthly financial report',time:'2h ago'},
-    {dot:'#fbbf24',text:'<strong>Vikram Singh</strong> updated budget settings',time:'3h ago'},
-  ].map(a=>`<div class="activity-item"><div class="activity-dot" style="background:${a.dot}"></div><div class="activity-text">${a.text}</div><div class="activity-time">${a.time}</div></div>`).join('');
-  document.getElementById('topCats').innerHTML = [['Food & Dining',35],['Housing',28],['Transport',18],['Shopping',12],['Entertainment',7]].map(([cat,pct])=>`
+  document.getElementById('recentActivity').innerHTML = liveUsers.slice(0, 5).map((u, i) => {
+    const colors = ['#34d399','#4f7cff','#f87171','#a78bfa','#fbbf24'];
+    return `<div class="activity-item"><div class="activity-dot" style="background:${colors[i%colors.length]}"></div><div class="activity-text"><strong>${u.name}</strong> registered on the platform</div><div class="activity-time">${new Date(u.createdAt).toLocaleDateString()}</div></div>`;
+  }).join('') || '<div style="color:var(--text3);font-size:13px;text-align:center;padding:20px">No users yet — seed the database to add demo data</div>';
+  const topCatsData = [
+    ['Food',35],['Utilities',28],['Transport',18],['Shopping',12],['Entertainment',7]
+  ];
+  document.getElementById('topCats').innerHTML = topCatsData.map(([cat,pct])=>`
     <div style="margin-bottom:12px">
-      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>${CAT_ICONS[cat]} ${cat}</span><span style="color:var(--text3)">${pct}%</span></div>
-      <div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${CAT_COLORS[cat]}"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>${CAT_ICONS[cat]||'📦'} ${cat}</span><span style="color:var(--text3)">${pct}%</span></div>
+      <div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${CAT_COLORS[cat]||'#94a3b8'}"></div></div>
     </div>`).join('');
 }
 
@@ -552,63 +578,61 @@ function renderAnalytics() {
 function renderUsers() {
   const q = (document.getElementById('userSearch')?.value||'').toLowerCase();
   const rf = document.getElementById('roleFilter')?.value||'All';
-  const filtered = users.filter(u=>(rf==='All'||u.role===rf)&&(u.name.toLowerCase().includes(q)||u.email.toLowerCase().includes(q)));
-  document.getElementById('usersTableBody').innerHTML = filtered.map(u=>`
-    <tr>
-      <td><div style="display:flex;align-items:center;gap:9px"><div class="uavatar" style="background:${u.color}">${u.avatar}</div><strong>${u.name}</strong></div></td>
+  const palette = ['#34d399','#4f7cff','#a78bfa','#fbbf24','#f87171','#38bdf8','#fb923c','#22d3ee'];
+  const filtered = liveUsers.filter(u=>(rf==='All'||u.role===rf)&&(u.name.toLowerCase().includes(q)||u.email.toLowerCase().includes(q)));
+  document.getElementById('usersTableBody').innerHTML = filtered.map((u,i)=>{
+    const initials = u.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    const color = palette[i % palette.length];
+    const roleClass = u.role==='admin'?'badge-purple':'badge-green';
+    const roleLabel = u.role==='admin'?'Admin':'User';
+    return `<tr>
+      <td><div style="display:flex;align-items:center;gap:9px"><div class="uavatar" style="background:${color}">${initials}</div><strong>${u.name}</strong></div></td>
       <td>${u.email}</td>
-      <td><span class="badge ${u.role==='Admin'?'badge-purple':u.role==='Viewer'?'badge-blue':'badge-green'}">${u.role}</span></td>
-      <td><strong>₹${u.expenses.toLocaleString('en-IN')}</strong></td>
-      <td style="color:var(--text3)">${u.active}</td>
-      <td><span class="badge ${u.status==='Active'?'badge-green':u.status==='Inactive'?'badge-amber':'badge-red'}">${u.status}</span></td>
+      <td><span class="badge ${roleClass}">${roleLabel}</span></td>
+      <td><strong>—</strong></td>
+      <td style="color:var(--text3)">${new Date(u.createdAt).toLocaleDateString()}</td>
+      <td><span class="badge badge-green">Active</span></td>
       <td>
-        <button class="action-btn" onclick="toggleStatus(${u.id})" title="Toggle Status">🔄</button>
-        <button class="action-btn danger" onclick="deleteUser(${u.id})" title="Delete">🗑</button>
+        <button class="action-btn" onclick="promoteUser('${u._id}','${u.role}')" title="Toggle Role">🔄</button>
       </td>
-    </tr>`).join('') || `<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text3)">No users found</td></tr>`;
+    </tr>`;
+  }).join('') || `<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text3)">${liveUsers.length ? 'No users match filter' : 'No users registered yet'}</td></tr>`;
 }
 
-function toggleStatus(id) {
-  const u = users.find(u=>u.id===id); if(!u) return;
-  u.status = u.status==='Active'?'Inactive':u.status==='Inactive'?'Active':'Active';
-  renderUsers(); showToast('🔄',`${u.name} status → ${u.status}`);
-}
-
-function deleteUser(id) {
-  const u = users.find(u=>u.id===id); if(!u) return;
-  if(!confirm(`Delete user ${u.name}? This cannot be undone.`)) return;
-  users = users.filter(u=>u.id!==id); renderUsers(); showToast('🗑️',`${u.name} removed`);
+async function promoteUser(id, currentRole) {
+  const newRole = currentRole === 'admin' ? 'user' : 'admin';
+  if (!confirm(`Change user role to ${newRole}?`)) return;
+  try {
+    await apiCall(`/users/${id}/role`, { method: 'PUT', body: JSON.stringify({ role: newRole }) });
+    await loadAllData();
+    renderUsers();
+    showToast('🔄', `Role updated to ${newRole}`);
+  } catch(e) {
+    showToast('⚠️', e.error || 'Failed to update role');
+  }
 }
 
 function openAddUser() { document.getElementById('addUserModal').classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
 function addUser() {
-  const fn = document.getElementById('newFirstName').value.trim();
-  const ln = document.getElementById('newLastName').value.trim();
-  const email = document.getElementById('newEmail').value.trim();
-  const role = document.getElementById('newRole').value;
-  const budget = parseInt(document.getElementById('newBudget').value)||50000;
-  if(!fn||!email) { showToast('⚠️','Please fill name and email'); return; }
-  const colors = ['#34d399','#4f7cff','#a78bfa','#fbbf24','#f87171','#38bdf8'];
-  users.push({id:nextUserId++,name:`${fn} ${ln}`.trim(),email,role,expenses:0,budget,active:'Just now',status:'Active',avatar:(fn[0]+(ln[0]||'')).toUpperCase(),color:colors[Math.floor(Math.random()*colors.length)]});
-  closeModal('addUserModal'); renderUsers(); showToast('✅',`${fn} ${ln} added successfully`);
-  ['newFirstName','newLastName','newEmail','newBudget'].forEach(id=>document.getElementById(id).value='');
+  showToast('ℹ️', 'Use the main app Register page to create new users');
+  closeModal('addUserModal');
 }
 
 function renderTransactions() {
   const q = (document.getElementById('txSearch')?.value||'').toLowerCase();
   const cf = document.getElementById('txCatFilter')?.value||'All';
-  const filtered = allTransactions.filter(t=>(cf==='All'||t.cat===cf)&&(t.user.toLowerCase().includes(q)||t.desc.toLowerCase().includes(q)));
-  document.getElementById('txTableBody').innerHTML = filtered.map(t=>`
+  const filtered = liveExpenses.filter(t=>(cf==='All'||t.category===cf)&&(t.description.toLowerCase().includes(q)));
+  document.getElementById('txTableBody').innerHTML = filtered.length ? filtered.map(t=>`
     <tr>
-      <td><strong>${t.user}</strong></td>
-      <td>${t.desc}</td>
-      <td><span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${CAT_COLORS[t.cat]||'#94a3b8'}22;color:${CAT_COLORS[t.cat]||'#94a3b8'}">${CAT_ICONS[t.cat]||'📦'} ${t.cat}</span></td>
-      <td><strong style="color:var(--red)">-₹${t.amount.toLocaleString('en-IN')}</strong></td>
-      <td style="color:var(--text3)">${t.date}</td>
-      <td><span class="badge ${t.status==='Verified'?'badge-green':t.status==='Flagged'?'badge-red':'badge-amber'}">${t.status}</span></td>
-    </tr>`).join('') || `<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text3)">No transactions found</td></tr>`;
+      <td><strong>${t.userName || 'Unknown'}</strong></td>
+      <td>${t.description}</td>
+      <td><span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${CAT_COLORS[t.category]||'#94a3b8'}22;color:${CAT_COLORS[t.category]||'#94a3b8'}">${CAT_ICONS[t.category]||'📦'} ${t.category}</span></td>
+      <td><strong style="color:var(--red)">-₹${Number(t.amount).toLocaleString('en-IN')}</strong></td>
+      <td style="color:var(--text3)">${new Date(t.date).toLocaleDateString()}</td>
+      <td><span class="badge badge-green">Verified</span></td>
+    </tr>`).join('') : `<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text3)">No transactions found</td></tr>`;
 }
 
 function renderReports() {

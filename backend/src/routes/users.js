@@ -48,4 +48,29 @@ router.put('/password', async (req, res, next) => {
   }
 });
 
+// GET /api/users/all — Admin: list all users
+router.get('/all', async (req, res, next) => {
+  try {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+    const users = await User.find({}).sort({ createdAt: -1 }).select('-password');
+    res.json({ users });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/users/:id/role — Admin: change user role
+router.put('/:id/role', async (req, res, next) => {
+  try {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+    const { role } = req.body;
+    if (!['user', 'admin'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
+    const user = await User.findByIdAndUpdate(req.params.id, { role }, { new: true });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ user });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;
